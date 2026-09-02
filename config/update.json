@@ -1,8 +1,8 @@
 {
-  "versionCode": 8,
-  "versionName": "1.4.2",
-  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.4.2/IdanPlusIL-1.4.2.apk",
-  "sha256": "d14d2c612b016edaa4856b5253bd734c30ce7dd35590f0277c377b00501cafa0",
-  "sizeBytes": 2506046,
-  "notes": "New home-screen icon and banner"
+  "versionCode": 9,
+  "versionName": "1.4.3",
+  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.4.3/IdanPlusIL-1.4.3.apk",
+  "sha256": "fc4c301e08aa3ac737f6acf28bd6cafed734dfb2944fcdf375838f0f3c227c43",
+  "sizeBytes": 2506048,
+  "notes": "App renamed to Idan Plus IL"
 }
