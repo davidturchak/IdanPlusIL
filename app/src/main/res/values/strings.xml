@@ -31,6 +31,7 @@
     <string name="cd_pause">Pause</string>
     <string name="cd_channel_logo">Channel logo</string>
     <string name="cd_app_logo">IdanPlusIL</string>
+    <string name="version_label">v%1$s</string>
 
     <!-- Updates -->
     <string name="action_check_updates">Check for updates</string>

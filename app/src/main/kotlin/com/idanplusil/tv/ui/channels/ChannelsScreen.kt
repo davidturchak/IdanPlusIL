@@ -37,6 +37,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.idanplusil.resolver.model.Channel
+import com.idanplusil.tv.BuildConfig
 import com.idanplusil.tv.R
 import com.idanplusil.tv.data.config.ConfigError
 import com.idanplusil.tv.ui.common.LoadingPane
@@ -229,6 +230,14 @@ private fun Header(
                 pluralStringResource(R.plurals.channel_count, count, count),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(16.dp))
+            // Installed version, quiet and small: it exists so a user can tell
+            // support (or themselves) what is actually running on the TV.
+            Text(
+                stringResource(R.string.version_label, BuildConfig.VERSION_NAME),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             )
         }
     }
