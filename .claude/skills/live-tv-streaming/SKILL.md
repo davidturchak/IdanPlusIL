@@ -1,6 +1,6 @@
 ---
 name: live-tv-streaming
-description: Architecture and implementation map for IdanPlusIL's live TV streaming - the :resolver module (five resolution techniques, channels.json config schema, fallback ladder, liveCheck harness) and the :app Compose-for-TV client (grid, Media3 player). Use when fixing a channel, adding a channel or technique, debugging playback, or touching channels.json. Includes the toolchain pins and device facts that bit us, and the reference-app analysis the design came from.
+description: Architecture and implementation map for IdanPlusIL's live TV streaming - the :resolver module (five resolution techniques, channels.json config schema, fallback ladder, liveCheck harness), the :app Compose-for-TV client (grid, Media3 player), and the self-update/release pipeline (update.json manifest, GitHub Releases, tools/release.sh, release keystore). Use when fixing a channel, adding a channel or technique, debugging playback, touching channels.json, cutting a release, or changing the update flow. Includes the toolchain pins and device facts that bit us, and the reference-app analysis the design came from.
 ---
 
 # Live TV streaming subsystem
@@ -332,10 +332,11 @@ IdanPlusIL actually built, so a fresh session can start here.
 | 403/410 → exclude + re-resolve | `app/.../player/LoadErrorPolicy.kt` |
 | Player state machine, option stepping, one re-resolve, 12 s absolute deadline, zapping | `app/.../ui/player/PlayerViewModel.kt` |
 | Player keys (stand down when the failure pane is up) | `app/.../ui/player/PlayerActivity.kt` |
-| Grid, card (number badge, 4-signal focus), header chip | `app/.../ui/channels/` |
+| Grid, card (number badge, 4-signal focus), header: logo, offline chip, version label | `app/.../ui/channels/` |
+| Version label = "check for updates" control (`VersionBadge`: chrome-free tv-material `Surface`, thin ring on focus; label swaps to Checking… / You're up to date / Update to X) | `app/.../ui/channels/ChannelsScreen.kt` |
 | Self-update: manifest model, version check, streaming download + SHA-256, APK cache | `app/.../data/update/{UpdateManifest,UpdateChecker,ApkDownloader,ApkStore}.kt` (pure JVM, tested) |
 | Self-update: install launch, unknown-sources gating | `app/.../update/UpdateInstaller.kt` |
-| Self-update: state machine and pane (replaces the grid, no Dialog) | `app/.../ui/channels/{UpdateUiState,UpdateViewModel,UpdatePane}.kt` |
+| Self-update: state machine and pane (Available/Downloading/Permission/Ready/Failed replace the grid, no Dialog; Checking/UpToDate stay inline in the header) | `app/.../ui/channels/{UpdateUiState,UpdateViewModel,UpdatePane}.kt` |
 | Published update manifest | `config/update.json` (written by `tools/release.sh`, never by hand) |
 | Release pipeline (bump, build, signer guard, GitHub Release, then manifest) | `tools/release.sh`, `tools/release-signer.sha256` |
 | Update-flow test build (release-signed, versionCode 1, `--install` replaces the TV app) | `tools/test-build.sh` |
@@ -401,7 +402,32 @@ Debug build has applicationId suffix `.debug`.
    rebuild: installed TVs refresh on next launch. Use `force: true` as the
    stop-gap when a technique breaks and a direct URL is known.
 
+### Operating procedure: cutting a release
+
+1. Commit and push the work to `main` (the script refuses a dirty or out-of-sync
+   tree). Pushing is the user's step in practice.
+2. `tools/release.sh X.Y.Z --notes "one line shown on the TV prompt"`
+   (`--dry-run` first if unsure). It bumps `idanplusil.versionCode`/`versionName`
+   in `gradle.properties`, runs the JVM tests, builds, checks the signer against
+   `tools/release-signer.sha256`, writes `config/update.json`, pushes the tag,
+   creates the GitHub Release, waits for the asset, then pushes `main`.
+3. **Do not install on the TV.** The user updates from the app (launch, or press
+   the version label). raw.githubusercontent lags up to 5 min.
+4. To re-test the update flow itself: `tools/test-build.sh --install` puts a
+   release-signed versionCode-1 build on the TV; the live release then shows up as
+   an update. The user asked to be the one who installs otherwise.
+
+Version label in the header shows `BuildConfig.VERSION_NAME`; it is how the user
+confirms which build a TV runs.
+
 ### Gotchas that cost time - do not rediscover
+
+- **Never add `focusable()` to a tv-material `Button`/`Surface` modifier.** It
+  creates a second focus target outside the component: `requestFocus()` lands on
+  the wrapper, the button never draws focused and the centre key does nothing.
+  `MessagePane` shipped with this bug in v1; Retry was unreachable.
+- **`run-as` does not work on the release build** (not debuggable). Judge the
+  update cache from the `update: pruned [...]` log line, not from the filesystem.
 
 - **Kaltura returns XML if `Content-Type` carries a charset.** OkHttp's
   `String.toRequestBody(mediaType)` always appends `; charset=utf-8`; Kaltura
