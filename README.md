@@ -1,6 +1,9 @@
 # Idan Plus IL
 
-An Android TV live channel streaming app.
+An Android TV live channel streaming app. "Idan Plus IL" is the display name
+(launcher label, update prompts, release titles); the package, gradle
+properties, keystore alias and APK file names keep the unspaced `IdanPlusIL` /
+`idanplusil` form and must not be renamed - installed TVs key updates on them.
 
 > **Status: v1, working.** A channel grid and a Media3 player, running on Android
 > TV. 15 live channels, all verified playing. Streams resolve on the device; there
@@ -179,6 +182,28 @@ Manifest shape:
 
 If the script fails after the tag was pushed it prints the rollback commands
 (delete the release and the remote tag, reset `main`) rather than running them.
+
+The script requires `main` to be in sync with `origin/main`, so push any
+pending work first. When the release has to be split between people or
+machines (for example, one side cannot push), run the same steps by hand in
+the same order:
+
+```bash
+# bump idanplusil.versionCode (+1) and idanplusil.versionName in gradle.properties
+./gradlew -q :resolver:test :app:testReleaseUnitTest :app:assembleRelease
+apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk   # compare with tools/release-signer.sha256
+cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/IdanPlusIL-X.Y.Z.apk
+# write config/update.json (versionCode, versionName, apkUrl, sha256, sizeBytes, notes)
+git commit -am "Release vX.Y.Z (versionCode N)" && git tag -a vX.Y.Z -m "Idan Plus IL X.Y.Z"
+git push origin refs/tags/vX.Y.Z
+gh release create vX.Y.Z app/build/outputs/apk/release/IdanPlusIL-X.Y.Z.apk \
+  --repo davidturchak/IdanPlusIL --verify-tag --title "Idan Plus IL X.Y.Z" --notes "..."
+git push origin main
+```
+
+If `main` goes out before the release exists, TVs that check in that window
+see the new version and fail the download; they recover on the next check.
+Close the window quickly rather than rolling back.
 
 ### Testing the update flow
 

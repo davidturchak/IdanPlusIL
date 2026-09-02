@@ -348,6 +348,13 @@ IdanPlusIL actually built, so a fresh session can start here.
 Package: `com.idanplusil.tv` (app), `com.idanplusil.resolver` (JVM module).
 Debug build has applicationId suffix `.debug`.
 
+Display name is **"Idan Plus IL"** (with spaces) since v1.4.3: `app_name`,
+`cd_app_logo`, the update prompts, README heading and GitHub Release titles.
+Everything machine-facing stays unspaced and must not be renamed: package,
+`idanplusil.*` gradle properties, keystore alias, `Theme.IdanPlusIL`, the
+`IdanPlusIL-X.Y.Z.apk` asset prefix and the repo slug. The launcher icon's
+wordmark is baked into the artwork and was not redrawn.
+
 ### `channels.json` schema
 
 ```json
@@ -415,7 +422,9 @@ Debug build has applicationId suffix `.debug`.
 ### Operating procedure: cutting a release
 
 1. Commit and push the work to `main` (the script refuses a dirty or out-of-sync
-   tree). Pushing is the user's step in practice.
+   tree). Pushing is the user's step in practice: **this session cannot run
+   `git push`** (permission-denied), so hand over the push commands rather than
+   retrying.
 2. `tools/release.sh X.Y.Z --notes "one line shown on the TV prompt"`
    (`--dry-run` first if unsure). It bumps `idanplusil.versionCode`/`versionName`
    in `gradle.properties`, runs the JVM tests, builds, checks the signer against
@@ -423,6 +432,18 @@ Debug build has applicationId suffix `.debug`.
    creates the GitHub Release, waits for the asset, then pushes `main`.
 3. **Do not install on the TV.** The user updates from the app (launch, or press
    the version label). raw.githubusercontent lags up to 5 min.
+5. **Split release (used for v1.4.3):** when local `main` is ahead of origin
+   the script's sync check fails, so do steps 2-5 by hand (bump
+   `gradle.properties`, `./gradlew -q :resolver:test :app:testReleaseUnitTest
+   :app:assembleRelease`, `apksigner verify --print-certs` against
+   `tools/release-signer.sha256`, copy to `IdanPlusIL-X.Y.Z.apk`, `jq` the
+   manifest, commit `Release vX.Y.Z (versionCode N)`, annotated tag), then hand
+   the user: push the tag, then `gh release create ... --verify-tag`, then push
+   `main`. `gh release create` itself is allowed here and is fine to run once
+   the tag is on the remote; verify with `curl -sfIL` on the asset URL and
+   compare the downloaded sha256 with `config/update.json`. If the user pushes
+   `main` early, get the tag and release up fast: TVs in the gap just fail the
+   download and recover on the next check.
 4. To re-test the update flow itself: `tools/test-build.sh --install` puts a
    release-signed versionCode-1 build on the TV; the live release then shows up as
    an update. The user asked to be the one who installs otherwise.
