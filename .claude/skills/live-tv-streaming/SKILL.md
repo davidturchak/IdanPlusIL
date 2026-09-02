@@ -338,6 +338,7 @@ IdanPlusIL actually built, so a fresh session can start here.
 | Self-update: state machine and pane (replaces the grid, no Dialog) | `app/.../ui/channels/{UpdateUiState,UpdateViewModel,UpdatePane}.kt` |
 | Published update manifest | `config/update.json` (written by `tools/release.sh`, never by hand) |
 | Release pipeline (bump, build, signer guard, GitHub Release, then manifest) | `tools/release.sh`, `tools/release-signer.sha256` |
+| Update-flow test build (release-signed, versionCode 1, `--install` replaces the TV app) | `tools/test-build.sh` |
 | Theme (LocalContentColor wired explicitly), tokens | `app/.../ui/theme/` |
 | Logo keying pipeline | `tools/branding/build_assets.py` |
 

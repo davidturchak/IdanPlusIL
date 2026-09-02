@@ -89,6 +89,8 @@ config/update.json                  the published update manifest (written by
                                     tools/release.sh, read by installed TVs)
 tools/release.sh                    cuts a release: bump, build, sign-check,
                                     GitHub Release, then publish the manifest
+tools/test-build.sh                 release-signed APK with versionCode 1, for
+                                    exercising the self-update flow on a TV
 tools/branding/build_assets.py      generates icons/banner from the source logo
 .claude/skills/live-tv-streaming/   architecture reference (loads automatically
                                     when working on playback in this repo)
@@ -176,6 +178,19 @@ Manifest shape:
 
 If the script fails after the tag was pushed it prints the rollback commands
 (delete the release and the remote tag, reset `main`) rather than running them.
+
+### Testing the update flow
+
+```bash
+tools/test-build.sh --install
+```
+
+Builds a release-signed APK with `versionCode` 1 and replaces the app on the
+connected TV with it (a downgrade needs the uninstall the script performs).
+Launch the app: the currently published release shows up as an update within
+about ten seconds and the whole flow runs for real against the GitHub asset.
+`--manifest URL` points the build at another `update.json`, for example on a
+branch, to try a manifest change before it reaches `main`.
 
 ### On the TV
 
