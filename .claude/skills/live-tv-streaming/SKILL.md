@@ -438,6 +438,12 @@ confirms which build a TV runs.
   `MessagePane` shipped with this bug in v1; Retry was unreachable.
 - **`run-as` does not work on the release build** (not debuggable). Judge the
   update cache from the `update: pruned [...]` log line, not from the filesystem.
+- **Google TV masks every launcher icon to a circle.** The adaptive foreground
+  must keep all art inside the 66dp safe circle of the 108dp canvas, measured by
+  true radius about the centre, not by bounding box - the v1 flame overflowed
+  and was clipped. The icon carries the whole lockup (flame + bright wordmark);
+  `tools/branding/build_assets.py --from-assets` rebuilds just the icons from
+  the committed lockup when the source logo is not to hand.
 - **`android:banner` must be declared on `<application>`.** Without it the TV
   launcher synthesises its own tile from the launcher icon and the app label,
   in its own text colour - on the TCL that was a black label on our near-black

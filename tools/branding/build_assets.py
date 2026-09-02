@@ -5,6 +5,15 @@ Run once when the source logo changes; the outputs are committed. This is
 authoring, not a build step.
 
     python3 tools/branding/build_assets.py path/to/logo.png
+    python3 tools/branding/build_assets.py --from-assets   # icons only, from the
+                                                           # committed lockup
+
+Launcher icons carry the whole lockup - flame plus the bright wordmark - not the
+flame alone. Google TV masks every icon to a circle, so the lockup is scaled by
+its true radius about its centre to sit inside the adaptive-icon safe zone (a
+66dp circle on the 108dp canvas); a bounding-box fit overflowed the mask and
+clipped the flame. `--from-assets` rebuilds just the icons from the committed
+`logo_lockup_dark.png` when the source logo is not to hand.
 
 Why this is not a one-liner: the source is an opaque PNG on white, and ~23% of
 the mark's own area is near-white highlight *inside* the flame petals. Keying on
@@ -137,6 +146,66 @@ def on_canvas(img, size, bg=None, coverage=1.0):
     return canvas
 
 
+def max_radius(img, alpha_min=40):
+    """Distance from the image centre to the farthest visibly opaque pixel."""
+    w, h = img.size
+    cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+    px = img.load()
+    best = 0.0
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] > alpha_min:
+                d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+                if d > best:
+                    best = d
+    return best
+
+
+def icon_canvas(lockup, size, radius_fraction, bg=None):
+    """Centre the lockup so nothing lies outside a circle of the given radius.
+
+    radius_fraction is relative to the canvas width: 0.29 keeps the art inside
+    the adaptive-icon safe zone (66/108 = 0.61 diameter, minus a hair of
+    margin); legacy icons are masked at their full extent, so they use more.
+    """
+    art = lockup.crop(lockup.getbbox())
+    scale = (radius_fraction * size) / max_radius(art)
+    scaled = art.resize(
+        (max(1, int(art.width * scale)), max(1, int(art.height * scale))), Image.LANCZOS
+    )
+    canvas = Image.new("RGBA", (size, size), (bg + (255,)) if bg else (0, 0, 0, 0))
+    canvas.alpha_composite(
+        scaled, ((size - scaled.width) // 2, (size - scaled.height) // 2)
+    )
+    return canvas
+
+
+def write_icons(lockup):
+    # Adaptive icon foreground: the lockup inside the 66dp safe circle.
+    save(icon_canvas(lockup, 432, 0.29), "drawable-v26/ic_launcher_foreground.png")
+
+    # Legacy launcher icons: opaque, masked round by TV launchers, so the art
+    # stays inside an inscribed circle with a little breathing room.
+    for density, px in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
+                        ("xxhdpi", 144), ("xxxhdpi", 192)):
+        icon = icon_canvas(lockup, px, 0.40, bg=BG_HEX)
+        save(icon, f"mipmap-{density}/ic_launcher.png", mode="RGB")
+        save(icon, f"mipmap-{density}/ic_launcher_round.png", mode="RGB")
+
+    for name in ("ic_launcher", "ic_launcher_round"):
+        path = os.path.join(RES, "mipmap-anydpi-v26", f"{name}.xml")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            fh.write(
+                '<?xml version="1.0" encoding="utf-8"?>\n'
+                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+                '    <background android:drawable="@color/brand_background" />\n'
+                '    <foreground android:drawable="@drawable/ic_launcher_foreground" />\n'
+                '</adaptive-icon>\n'
+            )
+        print(f"  mipmap-anydpi-v26/{name}.xml")
+
+
 def save(img, relpath, mode="RGBA"):
     path = os.path.join(RES, relpath)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -146,8 +215,13 @@ def save(img, relpath, mode="RGBA"):
 
 def main():
     src_path = sys.argv[1] if len(sys.argv) > 1 else None
+    if src_path == "--from-assets":
+        lockup = Image.open(os.path.join(RES, "drawable-nodpi", "logo_lockup_dark.png")).convert("RGBA")
+        print("outputs (icons only, from the committed lockup):")
+        write_icons(lockup)
+        return
     if not src_path or not os.path.exists(src_path):
-        sys.exit("usage: build_assets.py <logo.png>")
+        sys.exit("usage: build_assets.py <logo.png> | --from-assets")
 
     src = Image.open(src_path)
     print(f"source: {src.size[0]}x{src.size[1]} {src.mode}")
@@ -173,29 +247,7 @@ def main():
     save(on_canvas(mark, (640, 640), coverage=0.66),
          "drawable-nodpi/splash_icon.png")
 
-    # Adaptive icon foreground: mark at 66%, the safe zone.
-    save(on_canvas(mark, (432, 432), coverage=0.66),
-         "drawable-v26/ic_launcher_foreground.png")
-
-    # Legacy launcher icons.
-    for density, px in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
-                        ("xxhdpi", 144), ("xxxhdpi", 192)):
-        icon = on_canvas(mark, (px, px), bg=BG_HEX, coverage=0.72)
-        save(icon, f"mipmap-{density}/ic_launcher.png", mode="RGB")
-        save(icon, f"mipmap-{density}/ic_launcher_round.png", mode="RGB")
-
-    for name in ("ic_launcher", "ic_launcher_round"):
-        path = os.path.join(RES, "mipmap-anydpi-v26", f"{name}.xml")
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as fh:
-            fh.write(
-                '<?xml version="1.0" encoding="utf-8"?>\n'
-                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                '    <background android:drawable="@color/brand_background" />\n'
-                '    <foreground android:drawable="@drawable/ic_launcher_foreground" />\n'
-                '</adaptive-icon>\n'
-            )
-        print(f"  mipmap-anydpi-v26/{name}.xml")
+    write_icons(lockup)
 
 
 if __name__ == "__main__":
