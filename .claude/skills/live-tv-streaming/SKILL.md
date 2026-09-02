@@ -10,6 +10,13 @@ decompiled reference app and restated as guidance for a new implementation. The
 original is Java 8 + AsyncTask + ExoPlayer 2; recommendations below target Kotlin
 + coroutines + Media3.
 
+> **Decisions already settled for IdanPlusIL — this document is descriptive, the
+> README is authoritative.** Stream resolution runs **server-side**: the client
+> calls `GET /v1/channels/{id}/stream` and does no scraping itself, so the five
+> resolution techniques below are backend concerns, not client code. The client
+> ships **Media3 only** — the libVLC fallback described later records what the
+> reference app did and is not a live option here.
+
 ## The core problem
 
 A live channel is not a URL. It is a *resolution procedure* that runs at play time
