@@ -1,5 +1,6 @@
 package com.idanplusil.tv.ui.channels
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -31,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.idanplusil.resolver.model.Channel
@@ -40,6 +43,7 @@ import com.idanplusil.tv.ui.common.LoadingPane
 import com.idanplusil.tv.ui.common.MessagePane
 import com.idanplusil.tv.ui.common.TvSafeAreaHorizontal
 import com.idanplusil.tv.ui.common.TvSafeAreaVertical
+import com.idanplusil.tv.ui.common.brandButtonColors
 import com.idanplusil.tv.ui.theme.BrandColors
 import com.idanplusil.tv.ui.common.BrandLockup
 
@@ -48,7 +52,25 @@ fun ChannelsScreen(
     state: ChannelsUiState,
     onChannelClick: (Channel) -> Unit,
     onRetry: () -> Unit,
+    updateState: UpdateUiState = UpdateUiState.Hidden(),
+    updateActions: UpdateActions? = null,
 ) {
+    // Hoisted so the scroll position survives the grid being swapped for the
+    // update pane and back.
+    val gridState = rememberLazyGridState()
+
+    val paneVisible = updateActions != null && updateState.showsPane
+    // Without this, Back on the update pane finishes the Activity - it exits the app.
+    BackHandler(enabled = paneVisible) {
+        when (updateState) {
+            is UpdateUiState.Downloading -> updateActions?.onCancel?.invoke()
+            is UpdateUiState.Available,
+            is UpdateUiState.ReadyToInstall,
+            is UpdateUiState.NeedsPermission -> updateActions?.onLater?.invoke()
+            else -> updateActions?.onDismiss?.invoke()
+        }
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -69,7 +91,11 @@ fun ChannelsScreen(
                 )
         )
 
-        when (state) {
+        // The pane replaces the grid outright: an update may be the fix for a
+        // broken grid, and a scrim over focusable cards is a D-pad trap.
+        if (paneVisible) {
+            UpdatePane(updateState, updateActions!!)
+        } else when (state) {
             ChannelsUiState.Loading ->
                 LoadingPane(stringResource(R.string.loading_channels))
 
@@ -87,19 +113,35 @@ fun ChannelsScreen(
                 onAction = onRetry,
             )
 
-            is ChannelsUiState.Content -> ChannelGrid(state, onChannelClick)
+            is ChannelsUiState.Content -> ChannelGrid(
+                state = state,
+                gridState = gridState,
+                onChannelClick = onChannelClick,
+                updateLabel = updateActions?.let { updateState.headerLabel() },
+                onCheckUpdates = updateActions?.onCheck,
+            )
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ChannelGrid(state: ChannelsUiState.Content, onChannelClick: (Channel) -> Unit) {
-    val gridState = rememberLazyGridState()
+private fun ChannelGrid(
+    state: ChannelsUiState.Content,
+    gridState: LazyGridState,
+    onChannelClick: (Channel) -> Unit,
+    updateLabel: String?,
+    onCheckUpdates: (() -> Unit)?,
+) {
     val firstItemFocus = remember { FocusRequester() }
 
     Column(Modifier.fillMaxSize()) {
-        Header(count = state.channels.size, stale = state.stale)
+        Header(
+            count = state.channels.size,
+            stale = state.stale,
+            updateLabel = updateLabel,
+            onCheckUpdates = onCheckUpdates,
+        )
 
         LazyVerticalGrid(
             // 960dp layout space minus the 48dp safe area each side leaves
@@ -141,7 +183,12 @@ private fun ChannelGrid(state: ChannelsUiState.Content, onChannelClick: (Channel
 }
 
 @Composable
-private fun Header(count: Int, stale: Boolean) {
+private fun Header(
+    count: Int,
+    stale: Boolean,
+    updateLabel: String?,
+    onCheckUpdates: (() -> Unit)?,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -153,6 +200,14 @@ private fun Header(count: Int, stale: Boolean) {
         BrandLockup(height = 40.dp)
 
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Reached with D-pad up from the first row; down re-enters the grid
+            // through its onEnter focus property. The grid still takes initial focus.
+            if (updateLabel != null && onCheckUpdates != null) {
+                Button(onClick = onCheckUpdates, colors = brandButtonColors(primary = false)) {
+                    Text(updateLabel, style = MaterialTheme.typography.labelMedium)
+                }
+                Spacer(Modifier.width(16.dp))
+            }
             if (stale) {
                 Box(
                     Modifier
@@ -180,6 +235,16 @@ private fun Header(count: Int, stale: Boolean) {
 }
 
 private const val COLUMNS = 5
+
+@Composable
+private fun UpdateUiState.headerLabel(): String = when (this) {
+    UpdateUiState.Checking -> stringResource(R.string.update_checking)
+    UpdateUiState.UpToDate -> stringResource(R.string.update_up_to_date)
+    is UpdateUiState.Hidden -> pending
+        ?.let { stringResource(R.string.action_update_available, it.versionName) }
+        ?: stringResource(R.string.action_check_updates)
+    else -> stringResource(R.string.action_check_updates)
+}
 
 private fun ConfigError.messageRes(): Int = when (this) {
     ConfigError.NoNetwork -> R.string.error_no_network

@@ -1,9 +1,28 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+// Version lives in gradle.properties so tools/release.sh can bump it with sed.
+val appVersionCode = providers.gradleProperty("idanplusil.versionCode").get().toInt()
+val appVersionName = providers.gradleProperty("idanplusil.versionName").get()
+
+// The self-update manifest. Override for testing against a branch:
+//   -PupdateManifestUrl=https://raw.githubusercontent.com/<user>/IdanPlusIL/<branch>/config/update.json
+val updateManifestUrl = providers.gradleProperty("updateManifestUrl")
+    .orElse("https://raw.githubusercontent.com/davidturchak/IdanPlusIL/main/config/update.json")
+    .get()
+
+// keystore.properties is gitignored (see keystore.properties.example). Reading it
+// at configuration time is configuration-cache safe: Gradle tracks the file as an
+// input, so creating or removing it invalidates the cached configuration.
+val keystoreProps: Properties? = rootProject.file("keystore.properties")
+    .takeIf { it.isFile }
+    ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
 
 android {
     namespace = "com.idanplusil.tv"
@@ -17,14 +36,15 @@ android {
         // far above it, so this costs nothing and covers every Android TV 6.0+ box.
         minSdk = 23
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         buildConfigField(
             "String",
             "CHANNELS_CONFIG_URL",
             "\"https://raw.githubusercontent.com/davidturchak/IdanPlusIL/main/config/channels.json\"",
         )
+        buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$updateManifestUrl\"")
         // Deliberately NO localeFilters/resourceConfigurations: adding res/values-iw
         // later must not be silently stripped.
     }
@@ -32,6 +52,17 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    signingConfigs {
+        if (keystoreProps != null) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -47,10 +78,20 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Debug-signed so playback smoothness can be measured on the TV
-            // before a real keystore exists. Compose debug builds are not
-            // representative of release performance.
-            signingConfig = signingConfigs.getByName("debug")
+            // Installed TVs only accept an update signed with the key of the
+            // build they already have, so a release is signed with the real
+            // keystore or not at all. Without keystore.properties the output is
+            // app-release-unsigned.apk, which cannot be installed - never a
+            // debug-signed APK that would silently break every TV's update path.
+            signingConfig = if (keystoreProps != null) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "keystore.properties not found: the release APK will be UNSIGNED. " +
+                        "See keystore.properties.example.",
+                )
+                null
+            }
         }
     }
 
@@ -121,4 +162,5 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }

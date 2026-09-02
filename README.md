@@ -85,6 +85,10 @@ resolver/                           pure JVM: resolution techniques, config,
                                     the fallback ladder. No android.* imports,
                                     so it is unit-testable without an emulator.
 config/channels.json                the published channel list and kill switch
+config/update.json                  the published update manifest (written by
+                                    tools/release.sh, read by installed TVs)
+tools/release.sh                    cuts a release: bump, build, sign-check,
+                                    GitHub Release, then publish the manifest
 tools/branding/build_assets.py      generates icons/banner from the source logo
 .claude/skills/live-tv-streaming/   architecture reference (loads automatically
                                     when working on playback in this repo)
@@ -105,6 +109,83 @@ Toolchain pins that matter: Gradle 8.11.1 → AGP 8.10.1; compileSdk 35 caps
 Media3 at 1.9.4 and Coil at 3.4.0; JDK 17 (the build machine's "java 21" is a JRE
 without `javac`, pinned via `org.gradle.java.home`). Kotlin 2.2.20, Compose BOM
 2026.03.01, tv-material 1.1.0. minSdk 23.
+
+## Releasing
+
+The app updates itself. On every launch it fetches `config/update.json` from
+this repo's `main` a couple of seconds after the grid is up; if the manifest's
+`versionCode` is higher than the installed one it offers to download the APK
+from the matching GitHub Release, verifies size and SHA-256, and hands the file
+to the system installer. A "Check for updates" button in the grid header does
+the same on demand. Startup checks are silent on failure - an offline TV opens
+normally.
+
+### One-time setup on the release machine
+
+Android only installs an update signed with the **same key** as the build
+already on the device, so the release key is permanent. Generate it once, keep
+it outside the repository, and back it up off-machine:
+
+```bash
+mkdir -p ~/.android-keys
+keytool -genkeypair -v -keystore ~/.android-keys/idanplusil-release.jks -storetype PKCS12 \
+  -alias idanplusil -keyalg RSA -keysize 2048 -validity 10000
+cp keystore.properties.example keystore.properties     # fill in the paths and passwords
+./gradlew :app:assembleRelease
+apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk | grep 'SHA-256'
+```
+
+`keystore.properties` and `*.jks` are gitignored. The signer's certificate
+digest is committed as `tools/release-signer.sha256` (it is public information),
+and the release script refuses to publish an APK signed by anything else.
+Without `keystore.properties` the release build is **unsigned** on purpose: an
+unsigned APK cannot be installed, whereas a debug-signed one would break the
+update path on every TV.
+
+Changing the key ever again means one manual `adb uninstall` and reinstall on
+every device.
+
+### Cutting a release
+
+```bash
+tools/release.sh 1.2.0 --notes "One line the TV shows on the update prompt"
+tools/release.sh 1.2.0 --dry-run     # everything except pushing
+```
+
+The script bumps `idanplusil.versionCode`/`versionName` in `gradle.properties`,
+runs the JVM tests, builds and sign-checks the APK, writes `config/update.json`,
+commits and tags. Then, in this order: pushes the **tag only**, creates the
+GitHub Release with `IdanPlusIL-X.Y.Z.apk` attached, waits until the asset URL
+resolves, and only then pushes `main`. That ordering is what guarantees a TV
+never reads a manifest pointing at an asset that does not exist yet.
+raw.githubusercontent.com caches for about five minutes, so TVs launched right
+after a release still see the previous manifest.
+
+Manifest shape:
+
+```json
+{
+  "versionCode": 2,
+  "versionName": "1.1.0",
+  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.1.0/IdanPlusIL-1.1.0.apk",
+  "sha256": "…",
+  "sizeBytes": 2283452,
+  "notes": "One line shown on the prompt"
+}
+```
+
+If the script fails after the tag was pushed it prints the rollback commands
+(delete the release and the remote tag, reset `main`) rather than running them.
+
+### On the TV
+
+Android 8+ asks the user once to allow IdanPlusIL to install unknown apps; the
+app opens the right settings screen and continues when you come back. For
+testing, grant it over adb:
+
+```bash
+adb shell appops set com.idanplusil.tv REQUEST_INSTALL_PACKAGES allow
+```
 
 ## Maintaining the channel list
 

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Downloaded update APKs. Handed to the system installer as content:// URIs. -->
+    <cache-path name="updates" path="updates/" />
+    <!-- API 23 only: the installer reads a file:// path from app-specific external cache. -->
+    <external-cache-path name="updates_ext" path="updates/" />
+</paths>

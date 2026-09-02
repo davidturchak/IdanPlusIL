@@ -1,8 +1,8 @@
 package com.idanplusil.tv.ui.common
 
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -17,6 +17,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonColors
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -49,11 +50,22 @@ fun LoadingPane(message: String, modifier: Modifier = Modifier) {
     }
 }
 
+/** The one button look used everywhere: quiet at rest, unmistakably orange when focused. */
+@Composable
+fun brandButtonColors(primary: Boolean = true): ButtonColors = ButtonDefaults.colors(
+    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+    contentColor = if (primary) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+    focusedContainerColor = BrandColors.FocusRing,
+    focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+)
+
 /**
- * Error and empty states.
+ * Error, empty and prompt states.
  *
  * The action button takes initial focus deliberately: on a remote, the fix for
- * a dead screen should be the centre key, not a hunt.
+ * a dead screen should be the centre key, not a hunt. Focus is re-requested
+ * whenever [actionLabel] changes, so consecutive states must use distinct
+ * primary labels. [content] renders between the detail text and the buttons.
  */
 @Composable
 fun MessagePane(
@@ -64,6 +76,7 @@ fun MessagePane(
     secondaryLabel: String? = null,
     onSecondary: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(actionLabel) {
@@ -76,38 +89,36 @@ fun MessagePane(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(12.dp))
-        Text(
-            detail,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+        if (detail.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+        if (content != null) {
+            Spacer(Modifier.height(24.dp))
+            content()
+        }
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(28.dp))
             Button(
                 onClick = onAction,
                 // The primary action is the one the remote's centre key should
-                // land on, so it has to look unmistakably focused.
-                colors = ButtonDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    focusedContainerColor = BrandColors.FocusRing,
-                    focusedContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                modifier = Modifier.focusRequester(focusRequester).focusable(),
+                // land on, so it has to look unmistakably focused. No extra
+                // focusable() here: it would add a second focus target outside
+                // the Button, which then never shows focus or receives the click.
+                colors = brandButtonColors(primary = true),
+                modifier = Modifier.focusRequester(focusRequester),
             ) { Text(actionLabel) }
         }
         if (secondaryLabel != null && onSecondary != null) {
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = onSecondary,
-                colors = ButtonDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    focusedContainerColor = BrandColors.FocusRing,
-                    focusedContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                colors = brandButtonColors(primary = false),
             ) { Text(secondaryLabel) }
         }
     }

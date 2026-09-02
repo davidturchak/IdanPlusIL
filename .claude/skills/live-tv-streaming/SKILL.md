@@ -333,6 +333,11 @@ IdanPlusIL actually built, so a fresh session can start here.
 | Player state machine, option stepping, one re-resolve, 12 s absolute deadline, zapping | `app/.../ui/player/PlayerViewModel.kt` |
 | Player keys (stand down when the failure pane is up) | `app/.../ui/player/PlayerActivity.kt` |
 | Grid, card (number badge, 4-signal focus), header chip | `app/.../ui/channels/` |
+| Self-update: manifest model, version check, streaming download + SHA-256, APK cache | `app/.../data/update/{UpdateManifest,UpdateChecker,ApkDownloader,ApkStore}.kt` (pure JVM, tested) |
+| Self-update: install launch, unknown-sources gating | `app/.../update/UpdateInstaller.kt` |
+| Self-update: state machine and pane (replaces the grid, no Dialog) | `app/.../ui/channels/{UpdateUiState,UpdateViewModel,UpdatePane}.kt` |
+| Published update manifest | `config/update.json` (written by `tools/release.sh`, never by hand) |
+| Release pipeline (bump, build, signer guard, GitHub Release, then manifest) | `tools/release.sh`, `tools/release-signer.sha256` |
 | Theme (LocalContentColor wired explicitly), tokens | `app/.../ui/theme/` |
 | Logo keying pipeline | `tools/branding/build_assets.py` |
 
@@ -424,6 +429,18 @@ Debug build has applicationId suffix `.debug`.
   launching; it sleeps and then `APP_START_CANCELED`s.
 - **Two tiny native libs do ship** (Compose graphics-path, DataStore counter);
   both include v7a.
+- **Release builds must be signed with the release keystore** (`keystore.properties`
+  → `~/.android-keys/idanplusil-release.jks`, gitignored). Without it the build
+  is deliberately *unsigned*. A debug-signed release would be rejected as an
+  update by every installed TV; changing the key means `adb uninstall` everywhere.
+- **Self-update pitfalls:** the FileProvider authority is
+  `${applicationId}.updates`, so the `.debug` variant has its own; a GitHub
+  release asset's URL uses the uploaded *file name* (`path#label` only changes
+  the label); push the tag and create the release *before* pushing `main`, or a
+  TV can read a manifest pointing at a 404; raw.githubusercontent lags ~5 min;
+  the R8 serializer keep rules were resolver-only until the app got its own
+  `@Serializable` type; pre-grant the install permission on a test TV with
+  `adb shell appops set com.idanplusil.tv REQUEST_INSTALL_PACKAGES allow`.
 - **Repo hygiene:** the reference app's name, its package, the local decompile
   directories (which are named after it), and its config URL never go in a
   tracked file, commit message or comment. Machine-specific ignores live in
@@ -431,8 +448,8 @@ Debug build has applicationId suffix `.debug`.
 
 ### Deliberately not built (v1 scope)
 
-Favourites, recents, EPG/guide, search, categories/rows, settings, parental
-PIN, VOD, radio, IPTV import, subtitle pickers, PiP, Hebrew locale. Hooks are in
+Favourites, recents, EPG/guide, search, categories/rows, settings (beyond the
+self-update check), parental PIN, VOD, radio, IPTV import, subtitle pickers, PiP, Hebrew locale. Hooks are in
 place: `Channel.epgId`/`categoryIds`, `ChannelCard(subtitle=)`, `supportsRtl`,
 start/end-only padding, all strings in `res/values/strings.xml`, no
 `localeFilters`. A JS-rendered-page technique (WebView) was planned for one

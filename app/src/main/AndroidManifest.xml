@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Self-update: hand a downloaded APK to the system installer (API 26+ gate). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- TV-only. Leanback required; touchscreen explicitly NOT required. -->
     <uses-feature android:name="android.software.leanback" android:required="true" />
@@ -44,6 +46,18 @@
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
             android:theme="@style/Theme.IdanPlusIL.Player" />
+
+        <!-- Serves downloaded update APKs to the system installer. The authority
+             carries ${applicationId}, so the .debug variant gets its own. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
 
     </application>
 </manifest>
