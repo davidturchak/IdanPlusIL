@@ -27,15 +27,22 @@ The full reference lives in [`.claude/skills/live-tv-streaming/`](.claude/skills
 The short version:
 
 ```
-ChannelCatalog    static metadata: id, title, logo, epgId, category
+Client                                        Backend
+──────                                        ───────
+ChannelCatalog   id, title, logo, epgId
       │
-RemoteConfig      per-channel {show, force, stream}, fetched at startup
+      │   GET /v1/channels/{id}/stream
+      ├────────────────────────────────────►  StreamResolver
+      │                                         ├── direct manifest
+      │                                         ├── HTML + embedded JSON
+      │                                         ├── iframe chase
+      │                                         ├── platform API
+      │                                         └── entitlement / token
+      │   ◄──── {url, headers, cookies, expiresAt, options[]}
       │
-StreamResolver    async, never throws, returns List<StreamOption>
+Option picker    auto-select by priority, or present a source menu
       │
-Option picker     auto-select by priority, or present a source menu
-      │
-PlayerHost        ExoPlayer / Media3 primary, libVLC fallback
+PlayerHost       Media3 (ExoPlayer)
 ```
 
 Three patterns carry most of the weight:
@@ -49,14 +56,21 @@ Three patterns carry most of the weight:
 - **Resolvers accumulate options rather than pick one**, so the selection layer
   and the player error policy both have somewhere to fall back to.
 
-### Planned direction
+### Settled decisions
 
-Stream resolution belongs **server-side**: the client calls
+**Stream resolution runs server-side.** The client calls
 `GET /v1/channels/{id}/stream` and receives `{url, headers, cookies, expiresAt,
-options[]}`. Resolver fixes then ship in minutes instead of waiting on an app
-release, credentials never reach the device, and one implementation serves every
-platform. The client keeps the catalog, the option picker, and the player. An
-on-device fallback path stays for when the backend is unreachable.
+options[]}`. It does no scraping, no HTML parsing, and holds no provider
+credentials. Resolver fixes ship in minutes instead of waiting on an app release
+and user updates, and one implementation serves every platform. The client keeps
+the catalog, the option picker, and the player. An on-device fallback path stays
+for when the backend is unreachable.
+
+**The client ships Media3 only.** No second player engine. A stream Media3 cannot
+play is a backend sourcing problem, not a reason to bundle another decoder — that
+choice keeps tens of megabytes of native libraries out of the APK. If a fallback
+engine ever becomes unavoidable, it goes behind a feature module rather than into
+the base APK.
 
 ## Repository layout
 
