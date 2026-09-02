@@ -1,8 +1,8 @@
 {
-  "versionCode": 6,
-  "versionName": "1.4.0",
-  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.4.0/IdanPlusIL-1.4.0.apk",
-  "sha256": "579ccda6587e4af6380d70ad523b52db011288a69582a4c52f5e88e4591175ae",
-  "sizeBytes": 2495109,
-  "notes": "Channel logos on every card"
+  "versionCode": 7,
+  "versionName": "1.4.1",
+  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.4.1/IdanPlusIL-1.4.1.apk",
+  "sha256": "1cd44d4490702538afcd02041033f84a015876c7840d889be0304eb4e87fa824",
+  "sizeBytes": 2495137,
+  "notes": "Open button works after update"
 }
