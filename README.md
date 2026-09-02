@@ -1,4 +1,4 @@
-# IdanPlusIL
+# Idan Plus IL
 
 An Android TV live channel streaming app.
 
@@ -195,7 +195,7 @@ branch, to try a manifest change before it reaches `main`.
 
 ### On the TV
 
-Android 8+ asks the user once to allow IdanPlusIL to install unknown apps; the
+Android 8+ asks the user once to allow Idan Plus IL to install unknown apps; the
 app opens the right settings screen and continues when you come back. For
 testing, grant it over adb:
 

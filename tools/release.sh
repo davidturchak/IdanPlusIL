@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cut a release of IdanPlusIL.
+# Cut a release of Idan Plus IL.
 #
 #   tools/release.sh <X.Y.Z> [--notes "one line shown on the TV prompt"] [--dry-run]
 #
@@ -36,7 +36,7 @@ done
 [[ -n "$VERSION" ]] || die "usage: tools/release.sh <X.Y.Z> [--notes \"...\"] [--dry-run]"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version must be X.Y.Z, got '$VERSION'"
 TAG="v$VERSION"
-NOTES="${NOTES:-IdanPlusIL $VERSION}"
+NOTES="${NOTES:-Idan Plus IL $VERSION}"
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -104,7 +104,7 @@ cat config/update.json
 
 git add gradle.properties config/update.json
 git commit -q -m "Release $TAG (versionCode $CODE)"
-git tag -a "$TAG" -m "IdanPlusIL $VERSION"
+git tag -a "$TAG" -m "Idan Plus IL $VERSION"
 
 if (( DRY_RUN )); then
   note "Dry run: nothing pushed. Undo with:"
@@ -131,7 +131,7 @@ git push -q origin "refs/tags/$TAG"
 
 note "Creating GitHub release"
 gh release create "$TAG" "$ASSET" --repo "$REPO_SLUG" --verify-tag \
-  --title "IdanPlusIL $VERSION" --notes "$NOTES"
+  --title "Idan Plus IL $VERSION" --notes "$NOTES"
 
 note "Waiting for $APK_URL"
 for attempt in $(seq 1 12); do
@@ -147,7 +147,7 @@ trap - ERR
 
 cat <<MSG
 
-Released IdanPlusIL $VERSION (versionCode $CODE).
+Released Idan Plus IL $VERSION (versionCode $CODE).
   asset:    $APK_URL
   manifest: https://raw.githubusercontent.com/$REPO_SLUG/main/config/update.json
 raw.githubusercontent.com caches for about 5 minutes; TVs launched before then
