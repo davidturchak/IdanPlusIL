@@ -2,12 +2,13 @@
 
 An Android TV live channel streaming app.
 
-> **Status: v1.** A channel grid and a Media3 player, running on Android TV.
-> Streams resolve on the device; there is no server.
+> **Status: v1, working.** A channel grid and a Media3 player, running on Android
+> TV. 24 live channels, all verified playing. Streams resolve on the device; there
+> is no server.
 
 ## What this is
 
-A ground-up Android TV (Leanback) app for live channel playback. The design
+A ground-up Android TV app (Compose for TV + Media3) for live channel playback. The design
 starts from one premise: **a live channel is not a URL, it is a resolution
 procedure that runs at play time.** Stream URLs rot — CDNs rotate, tokens expire
 in minutes, providers restructure their pages — so the app models a channel as
@@ -20,7 +21,7 @@ The full reference lives in [`.claude/skills/live-tv-streaming/`](.claude/skills
 
 | Document | Covers |
 |---|---|
-| [`SKILL.md`](.claude/skills/live-tv-streaming/SKILL.md) | Layer map, resolver contract, three-tier fallback, remote channel config, token caching, EPG binding |
+| [`SKILL.md`](.claude/skills/live-tv-streaming/SKILL.md) | Layer map, resolver contract, three-tier fallback, **the implementation map of this repo**, the `channels.json` schema, the "a channel stopped working" procedure, and the gotchas |
 | [`references/resolver-patterns.md`](.claude/skills/live-tv-streaming/references/resolver-patterns.md) | The five stream resolution techniques and when each applies |
 | [`references/player-and-http.md`](.claude/skills/live-tv-streaming/references/player-and-http.md) | Media source construction, format sniffing, error policy, cookie/header propagation |
 
@@ -63,7 +64,7 @@ GitHub URL for per-channel `{show, force, stream}`.
 
 The recoverability a server would have provided is bought back a different way:
 **techniques live in code, parameters live in config.** Compiled Kotlin ships only
-the six techniques. Everything that actually breaks - CSS selectors, JSON
+the five techniques. Everything that actually breaks - CSS selectors, JSON
 pointers, platform ids, entitlement parameter names, browser header sets, the URLs
 themselves - lives in `channels.json`. A broadcaster changing their markup is a
 one-line edit to a JSON file, not a release. The `force` flag remains the kill
@@ -100,19 +101,32 @@ echo "sdk.dir=/path/to/android-sdk" > local.properties   # or export ANDROID_HOM
 A fresh clone has neither `local.properties` nor `ANDROID_HOME`; without one of
 them the build stops with `SDK location not found`.
 
-### Checking the channel list
+Toolchain pins that matter: Gradle 8.11.1 → AGP 8.10.1; compileSdk 35 caps
+Media3 at 1.9.4 and Coil at 3.4.0; JDK 17 (the build machine's "java 21" is a JRE
+without `javac`, pinned via `org.gradle.java.home`). Kotlin 2.2.20, Compose BOM
+2026.03.01, tv-material 1.1.0. minSdk 23.
 
-Channel URLs rot - that is the premise the whole design starts from. To find out
-which ones currently work:
+## Maintaining the channel list
+
+`config/channels.json` **is** the channel list. Installed TVs fetch it from this
+repo's `main` on every launch and fall back to a cached or bundled copy, so a
+change here reaches every device with no rebuild.
 
 ```bash
 ./gradlew :resolver:liveCheck
 ```
 
-It resolves every visible channel concurrently and reports `OK`, `DEGRADED` or
-`FAIL` per channel. **`DEGRADED` is the state worth watching**: the channel plays,
-but only from its static fallback, which means its resolver has quietly died and
-no amount of "does it play" testing would have told you.
+Resolves every visible channel concurrently and reports `OK`, `DEGRADED` or
+`FAIL`. **`DEGRADED` is the state worth watching**: the channel plays, but only
+from its static fallback, which means its resolver has quietly died and no amount
+of "does it play" testing would have told you.
+
+To fix a channel: edit its entry (a `direct` resolver takes a single `stream` or
+an `options[]` list of candidates), mirror the file to
+`resolver/src/main/resources/channels.json` so a fresh install starts from the
+same data, re-run `liveCheck`, push. `force: true` plays `stream` and skips the
+resolver - the stop-gap when a technique breaks. `show: false` hides a channel.
+The full schema and per-technique keys are in the skill document.
 
 ## Provenance
 

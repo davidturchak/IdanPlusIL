@@ -113,6 +113,10 @@ Recovery ladder on playback failure, in order:
 
 ## Two backends
 
+> **IdanPlusIL ships Media3 only.** This section records what the reference app
+> did; it is not a live option here. The implemented player is
+> `app/.../player/PlayerFactory.kt` + `LoadErrorPolicy.kt`.
+
 ExoPlayer/Media3 is the primary. libVLC (`LibVLCFragment`, `VlcPlayerAdapter`,
 `player/VideoPlayerGlueVLC.java`) is the fallback for streams ExoPlayer refuses:
 unusual codecs, RTSP/RTMP, malformed or non-standard manifests.

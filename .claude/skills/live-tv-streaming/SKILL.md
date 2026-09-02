@@ -1,6 +1,6 @@
 ---
 name: live-tv-streaming
-description: Architecture and patterns for building live TV channel streaming in an Android TV / Leanback app - per-channel stream resolvers, multi-source fallback, remote channel config, token/entitlement handling, and ExoPlayer/VLC playback wiring. Use when implementing, debugging, or designing live channel playback, channel lists, stream resolution, EPG binding, or player backends. Derived from analysis of a decompiled reference app.
+description: Architecture and implementation map for IdanPlusIL's live TV streaming - the :resolver module (five resolution techniques, channels.json config schema, fallback ladder, liveCheck harness) and the :app Compose-for-TV client (grid, Media3 player). Use when fixing a channel, adding a channel or technique, debugging playback, or touching channels.json. Includes the toolchain pins and device facts that bit us, and the reference-app analysis the design came from.
 ---
 
 # Live TV streaming subsystem
@@ -50,7 +50,7 @@ StreamResolver        one per channel/technique; returns List<StreamOption>
       │
 StreamOption picker   auto-select best, or present a quality/source menu
       │
-PlayerHost            ExoPlayer (Media3) primary, libVLC fallback
+PlayerHost            ExoPlayer (Media3) - this repo ships Media3 only
 ```
 
 Source anchors, relative to the reference app's decompiled source root:
@@ -304,6 +304,139 @@ reproduce. Note also that the original's string encryption (AES-CBC + rot13 with
 keys split across a stripped JNI `libkeys.so`) provides no real protection: the
 whole scheme was recoverable from the APK in a single pass. Anything that must
 stay secret belongs on a server you control.
+
+
+## Implementation in this repo
+
+Everything above describes the reference app. This section is the map of what
+IdanPlusIL actually built, so a fresh session can start here.
+
+### Where things live
+
+| Concept | Location |
+|---|---|
+| Resolver contract (total, never throws) | `resolver/.../StreamResolver.kt` |
+| Single dispatch point, budget + totality enforcement | `resolver/.../ResolverRegistry.kt` |
+| Three-tier ladder (force → live → fallbacks), option accumulation | `resolver/.../ChannelResolutionService.kt` |
+| Techniques | `resolver/.../technique/{Direct,HtmlJson,IframeChase,Kaltura,Entitlement}Resolver.kt` |
+| One immutable OkHttp client per source, derived from a shared base | `resolver/.../http/HttpClientFactory.kt` |
+| Config model + defensive per-entry parsing + bundled overlay | `resolver/.../config/{RemoteChannelConfig,ResolverSpec,ConfigLoader,BundledDefaults}.kt` |
+| Token cache with expiry (60 s skew) | `resolver/.../token/TokenStore.kt` |
+| Published channel list / kill switch | `config/channels.json` (fetched from raw GitHub `main`) |
+| Bundled cold-start copy - keep identical to the published one | `resolver/src/main/resources/channels.json` |
+| Live health harness | `resolver/src/liveCheck/.../LiveCheckMain.kt` → `./gradlew :resolver:liveCheck` |
+| Fixture tests, fake HTTP facade | `resolver/src/test/...`, `FakeHttpFacade.kt` |
+| Config fetch (ETag), disk cache (temp-then-rename), 3-source ladder | `app/.../data/config/{RemoteConfigSource,ConfigCache,ChannelRepository}.kt` |
+| Dependency graph (hand-rolled, no Hilt) | `app/.../di/AppContainer.kt` |
+| Media3 assembly: SurfaceView, decoder fallback, chunkless HLS, 30 s buffer | `app/.../player/PlayerFactory.kt` |
+| 403/410 → exclude + re-resolve | `app/.../player/LoadErrorPolicy.kt` |
+| Player state machine, option stepping, one re-resolve, 12 s absolute deadline, zapping | `app/.../ui/player/PlayerViewModel.kt` |
+| Player keys (stand down when the failure pane is up) | `app/.../ui/player/PlayerActivity.kt` |
+| Grid, card (number badge, 4-signal focus), header chip | `app/.../ui/channels/` |
+| Theme (LocalContentColor wired explicitly), tokens | `app/.../ui/theme/` |
+| Logo keying pipeline | `tools/branding/build_assets.py` |
+
+Package: `com.idanplusil.tv` (app), `com.idanplusil.resolver` (JVM module).
+Debug build has applicationId suffix `.debug`.
+
+### `channels.json` schema
+
+```json
+{
+  "schema": 1,
+  "updatedAt": 1756809600000,
+  "headerSets": { "browser_chrome": { "User-Agent": "…", "sec-ch-ua": "…" } },
+  "live": {
+    "<id>": {
+      "show": true, "force": false, "sort": 10,
+      "title": "Kan 11", "epgId": "11", "logo": "https://…png",
+      "stream": "https://…/playlist.m3u8",
+      "resolver": { "type": "…", "headersRef": "browser_chrome", … }
+    }
+  }
+}
+```
+
+- `show` hides a channel; `force: true` plays `stream` and skips the resolver
+  entirely (**requires a non-blank `stream`**); `stream` is also the tier-3
+  fallback. `sort` orders the grid. `id` is the card's number badge when numeric.
+- `resolver.type` is one of `direct | html_json | iframe_chase | kaltura |
+  entitlement`. Unknown types fail that one channel, not the file.
+- `headersRef` names an entry in `headerSets`; headers ride on resolution *and*
+  on every segment request.
+- Per-type keys:
+  - `direct`: `stream` **or** `options: [{url, label, priority, container}]`.
+    `options` replaces the reference app's synthetic `#EXT-X-STREAM-INF` string.
+    `container: "dash"` for `.livx`/DASH manifests with no useful extension.
+  - `entitlement`: `entitlementUrl`, `etParam/etValue`, `lpParam`, `cdnParam`,
+    `cdn`, `ticketTtlSeconds`, and `stream` **or** `options[]`. One ticket is
+    requested per manifest (the provider's own flow) - never one ticket stamped
+    across paths the response did not name.
+  - `kaltura`: `serviceUrl`, `partnerId`, `widgetId`, `entryId`, `referer`,
+    `userAgent`, `extraOptions[]`.
+  - `iframe_chase`: `pageUrl` (must be a page, a manifest is rejected),
+    `iframeSelector`, `maxHops`, `sendReferer`, `manifestPattern`.
+  - `html_json`: `pages[{url,label,priority}]`, `jsonSelector`, `jsonPointer`,
+    `iframeSelector`. Implemented and tested, currently unused - see gotchas.
+- Config priorities may tie; resolvers make them strictly distinct.
+
+### Operating procedure: a channel stopped working
+
+1. `./gradlew :resolver:liveCheck`. `FAIL` = nothing plays. `DEGRADED` = plays
+   only off the fallback, i.e. the resolver is dead and users would never know.
+2. **Check the reference app's *published* config before anything else.** Its
+   compiled-in fallbacks (what a decompile shows) are years stale; its remote
+   config has `force: true` on every channel and current URLs, several as
+   multi-line playlists to split into `options[]`. The URL is returned by a JNI
+   call and sits as a plain string in its native library - it contains the
+   reference app's name and **must never appear in a tracked file**.
+3. Edit `config/channels.json` (and mirror to
+   `resolver/src/main/resources/channels.json`), re-run liveCheck, push. No
+   rebuild: installed TVs refresh on next launch. Use `force: true` as the
+   stop-gap when a technique breaks and a direct URL is known.
+
+### Gotchas that cost time - do not rediscover
+
+- **Kaltura returns XML if `Content-Type` carries a charset.** OkHttp's
+  `String.toRequestBody(mediaType)` always appends `; charset=utf-8`; Kaltura
+  string-matches `application/json` and silently falls back to empty form
+  parsing (HTTP 200, `<xml><result/></xml>`). Post bytes, not a String.
+- **Kan's site (`kan.org.il`) 403s any plain HTTP client** even with a full
+  Chrome header set - Cloudflare TLS fingerprinting. That is why `html_json` is
+  unused and Kan 11 is `direct` with three options. No header config fixes this.
+- **tv-material `Text` is black outside a `Surface`.** `LocalContentColor` is not
+  derived from the scheme; the theme provides it explicitly.
+- **`screencap` shows black where video plays.** `SurfaceView` renders on a
+  hardware overlay plane. Judge playback from `logcat | grep MediaCodec` (`ROB:`
+  rendered-output-buffers per second), not from screenshots.
+- **When the failure pane is up, the player's `onKeyDown` must return `super`**,
+  or Retry/Back are unreachable and centre toggles play/pause on a dead stream.
+- **ExoPlayer retries a dead host with backoff for 30 s+ before erroring.** The
+  ViewModel enforces an absolute 12 s per-channel first-frame deadline.
+- **The system "java 21" on the build machine is a JRE with no `javac`.** JDK 17
+  is pinned via `org.gradle.java.home` in `gradle.properties`.
+- **Version ceilings:** Gradle 8.11.1 caps AGP at 8.10.1; only `android-35` is
+  installed, which caps Media3 at 1.9.4 and Coil at 3.4.0 (`minCompileSdk`).
+- **Wrapper generation needs a `settings.gradle.kts` to exist first.**
+- **Target device** (ADB `192.168.1.195:5555`): TCL, Android 12 / API 31,
+  **armeabi-v7a only**, 2.4 GB, MT5896, 1080p UI. Any future native dependency
+  must ship a v7a variant. Wake it with `input keyevent KEYCODE_WAKEUP` before
+  launching; it sleeps and then `APP_START_CANCELED`s.
+- **Two tiny native libs do ship** (Compose graphics-path, DataStore counter);
+  both include v7a.
+- **Repo hygiene:** the reference app's name, its package, the local decompile
+  directories (which are named after it), and its config URL never go in a
+  tracked file, commit message or comment. Machine-specific ignores live in
+  `.git/info/exclude`.
+
+### Deliberately not built (v1 scope)
+
+Favourites, recents, EPG/guide, search, categories/rows, settings, parental
+PIN, VOD, radio, IPTV import, subtitle pickers, PiP, Hebrew locale. Hooks are in
+place: `Channel.epgId`/`categoryIds`, `ChannelCard(subtitle=)`, `supportsRtl`,
+start/end-only padding, all strings in `res/values/strings.xml`, no
+`localeFilters`. A JS-rendered-page technique (WebView) was planned for one
+channel and is no longer needed - that channel now has a plain HLS URL.
 
 ## Reference files
 
