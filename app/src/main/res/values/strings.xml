@@ -14,10 +14,6 @@
     <string name="error_malformed">The channel list could not be read.</string>
     <string name="action_retry">Retry</string>
     <string name="action_back_to_channels">Back to channels</string>
-    <plurals name="channel_count">
-        <item quantity="one">%d channel</item>
-        <item quantity="other">%d channels</item>
-    </plurals>
 
     <!-- Player -->
     <string name="live">LIVE</string>
@@ -34,7 +30,6 @@
     <string name="version_label">v%1$s</string>
 
     <!-- Updates -->
-    <string name="action_check_updates">Check for updates</string>
     <string name="action_update_available">Update to %1$s</string>
     <string name="action_download_install">Download and install</string>
     <string name="action_later">Later</string>

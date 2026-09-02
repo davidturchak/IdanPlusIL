@@ -30,11 +30,13 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Button
+import androidx.compose.foundation.BorderStroke
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.idanplusil.resolver.model.Channel
 import com.idanplusil.tv.BuildConfig
@@ -44,7 +46,6 @@ import com.idanplusil.tv.ui.common.LoadingPane
 import com.idanplusil.tv.ui.common.MessagePane
 import com.idanplusil.tv.ui.common.TvSafeAreaHorizontal
 import com.idanplusil.tv.ui.common.TvSafeAreaVertical
-import com.idanplusil.tv.ui.common.brandButtonColors
 import com.idanplusil.tv.ui.theme.BrandColors
 import com.idanplusil.tv.ui.common.BrandLockup
 
@@ -118,7 +119,7 @@ fun ChannelsScreen(
                 state = state,
                 gridState = gridState,
                 onChannelClick = onChannelClick,
-                updateLabel = updateActions?.let { updateState.headerLabel() },
+                updateLabel = if (updateActions != null) updateState.headerLabel() else null,
                 onCheckUpdates = updateActions?.onCheck,
             )
         }
@@ -138,7 +139,6 @@ private fun ChannelGrid(
 
     Column(Modifier.fillMaxSize()) {
         Header(
-            count = state.channels.size,
             stale = state.stale,
             updateLabel = updateLabel,
             onCheckUpdates = onCheckUpdates,
@@ -185,7 +185,6 @@ private fun ChannelGrid(
 
 @Composable
 private fun Header(
-    count: Int,
     stale: Boolean,
     updateLabel: String?,
     onCheckUpdates: (() -> Unit)?,
@@ -201,14 +200,6 @@ private fun Header(
         BrandLockup(height = 40.dp)
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Reached with D-pad up from the first row; down re-enters the grid
-            // through its onEnter focus property. The grid still takes initial focus.
-            if (updateLabel != null && onCheckUpdates != null) {
-                Button(onClick = onCheckUpdates, colors = brandButtonColors(primary = false)) {
-                    Text(updateLabel, style = MaterialTheme.typography.labelMedium)
-                }
-                Spacer(Modifier.width(16.dp))
-            }
             if (stale) {
                 Box(
                     Modifier
@@ -226,33 +217,58 @@ private fun Header(
                 }
                 Spacer(Modifier.width(16.dp))
             }
-            Text(
-                pluralStringResource(R.plurals.channel_count, count, count),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(16.dp))
-            // Installed version, quiet and small: it exists so a user can tell
-            // support (or themselves) what is actually running on the TV.
-            Text(
-                stringResource(R.string.version_label, BuildConfig.VERSION_NAME),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            // The installed version doubles as the "check for updates" control:
+            // no button chrome at rest, a faint ring and brighter text when the
+            // D-pad lands on it (reached with UP from the first row). While a
+            // check runs, or an update is pending, the label says so instead.
+            VersionBadge(
+                label = updateLabel ?: stringResource(R.string.version_label, BuildConfig.VERSION_NAME),
+                onClick = onCheckUpdates,
             )
         }
     }
 }
 
+@Composable
+private fun VersionBadge(label: String, onClick: (() -> Unit)?) {
+    val dim = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+    if (onClick == null) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = dim)
+        return
+    }
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            contentColor = dim,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContentColor = MaterialTheme.colorScheme.onSurface,
+            pressedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            pressedContentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(BorderStroke(1.dp, BrandColors.FocusRing), shape = RoundedCornerShape(6.dp)),
+        ),
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+    }
+}
+
 private const val COLUMNS = 5
 
+/** Text that replaces the version while a check is running or an update is pending; null = show the version. */
 @Composable
-private fun UpdateUiState.headerLabel(): String = when (this) {
+private fun UpdateUiState.headerLabel(): String? = when (this) {
     UpdateUiState.Checking -> stringResource(R.string.update_checking)
     UpdateUiState.UpToDate -> stringResource(R.string.update_up_to_date)
-    is UpdateUiState.Hidden -> pending
-        ?.let { stringResource(R.string.action_update_available, it.versionName) }
-        ?: stringResource(R.string.action_check_updates)
-    else -> stringResource(R.string.action_check_updates)
+    is UpdateUiState.Hidden -> pending?.let { stringResource(R.string.action_update_available, it.versionName) }
+    else -> null
 }
 
 private fun ConfigError.messageRes(): Int = when (this) {
