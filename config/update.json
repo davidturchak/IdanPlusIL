@@ -1,8 +1,8 @@
 {
-  "versionCode": 4,
-  "versionName": "1.2.0",
-  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.2.0/IdanPlusIL-1.2.0.apk",
-  "sha256": "90d1182d9d62ec2f1cc4dba3d4a31f1ade5f36c52a8babf6ab12e0f3a5fa2a69",
-  "sizeBytes": 2283857,
-  "notes": "Shows the installed version in the channel grid header."
+  "versionCode": 5,
+  "versionName": "1.3.0",
+  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.3.0/IdanPlusIL-1.3.0.apk",
+  "sha256": "503d05dd79d312007b899bbfb71c947d7610ed27dca7906ecb2e817df68bb90f",
+  "sizeBytes": 2283214,
+  "notes": "Press the version label in the corner to check for updates."
 }
