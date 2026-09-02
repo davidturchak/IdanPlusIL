@@ -28,7 +28,7 @@ The full reference lives in [`.claude/skills/live-tv-streaming/`](.claude/skills
 The short version:
 
 ```
-ChannelCatalog      id, title, number, epgId          <- channels.json
+ChannelCatalog      id, title, number, logo, epgId    <- channels.json
       |
 RemoteConfig        per-channel {show, force, stream}  <- raw.githubusercontent
       |
@@ -92,6 +92,7 @@ tools/release.sh                    cuts a release: bump, build, sign-check,
 tools/test-build.sh                 release-signed APK with versionCode 1, for
                                     exercising the self-update flow on a TV
 tools/branding/build_assets.py      generates icons/banner from the source logo
+tools/branding/build_channel_logos.py  normalises channel card art into drawable-nodpi/logo_*
 .claude/skills/live-tv-streaming/   architecture reference (loads automatically
                                     when working on playback in this repo)
 ```

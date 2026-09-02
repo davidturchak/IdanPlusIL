@@ -67,7 +67,7 @@ private fun RemoteChannelConfig.toChannels(): List<Channel> =
             Channel(
                 id = id,
                 title = cfg.title ?: "Channel $id",
-                logoUrl = cfg.logo,
+                logo = cfg.logo,
                 epgId = cfg.epgId,
                 sortOrder = cfg.sort,
                 bundledFallbackUrl = cfg.stream,

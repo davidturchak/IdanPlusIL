@@ -10,7 +10,13 @@ package com.idanplusil.resolver.model
 data class Channel(
     val id: String,
     val title: String,
-    val logoUrl: String? = null,
+    /**
+     * Card art: an `http(s)` URL, or the bare name of a drawable bundled with
+     * the app (`logo_11`). Bundled is the norm - logos rarely change and must
+     * render offline on first paint; the URL form lets the published config
+     * override one without a release. Resolution is the app's job.
+     */
+    val logo: String? = null,
     val epgId: String? = null,
     val categoryIds: List<String> = emptyList(),
     val sortOrder: Int = 0,

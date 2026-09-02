@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updatedAt": 1756809600000,
+  "updatedAt": 1788356285000,
   "headerSets": {
     "browser_desktop": {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
@@ -28,6 +28,7 @@
       "force": false,
       "sort": 10,
       "title": "Kan 11",
+      "logo": "logo_11",
       "epgId": "11",
       "stream": "https://r.il.cdn-redge.media/livehls/oil/kancdn-live/live/kan11/live.livx/playlist.m3u8?dvr=21600000",
       "resolver": {
@@ -56,6 +57,7 @@
       "force": false,
       "sort": 20,
       "title": "Keshet 12",
+      "logo": "logo_12",
       "epgId": "12",
       "stream": "https://mako-streaming.akamaized.net/n12/hls/live/2103938/k12/index.m3u8",
       "resolver": {
@@ -107,6 +109,7 @@
       "force": false,
       "sort": 30,
       "title": "Reshet 13",
+      "logo": "logo_13",
       "epgId": "13",
       "stream": "https://d18b0e6mopany4.cloudfront.net/out/v1/2f2bc414a3db4698a8e94b89eaf2da2a/index.m3u8",
       "resolver": {
@@ -146,6 +149,7 @@
       "force": false,
       "sort": 40,
       "title": "Now 14",
+      "logo": "logo_14",
       "epgId": "14",
       "stream": "https://ch14channel14.encoders.immergo.tv/app/2/streamPlaylist.m3u8",
       "resolver": {
@@ -169,6 +173,7 @@
       "force": false,
       "sort": 50,
       "title": "Music 24",
+      "logo": "logo_24",
       "epgId": "24",
       "stream": "https://mako-streaming.akamaized.net/direct/hls/live/2035340/ch24live/index.m3u8",
       "resolver": {
@@ -190,6 +195,7 @@
       "force": false,
       "sort": 60,
       "title": "Calcala 10",
+      "logo": "logo_10",
       "epgId": "10",
       "stream": "https://r.il.cdn-redge.media/livehls/oil/calcala-live/live/channel10/live.livx/playlist.m3u8?dvr=21600000",
       "resolver": {
@@ -201,6 +207,7 @@
       "force": false,
       "sort": 70,
       "title": "Kan Educational 23",
+      "logo": "logo_23",
       "epgId": "23",
       "stream": "https://kancdn.medonecdn.net/livehls/oil/kancdn-live/live/kan_edu/live.livx/playlist.m3u8?renditions&fmp4",
       "resolver": {
@@ -212,6 +219,7 @@
       "force": false,
       "sort": 80,
       "title": "Makan 33",
+      "logo": "logo_33",
       "epgId": "33",
       "stream": "https://kancdn.medonecdn.net/livehls/oil/kancdn-live/live/makan/live.livx/playlist.m3u8?renditions&fmp4",
       "resolver": {
@@ -223,6 +231,7 @@
       "force": false,
       "sort": 90,
       "title": "Channel 16",
+      "logo": "logo_16",
       "epgId": "16",
       "stream": "https://ch16israel-cdn.encoders.immergo.tv/2/streamPlaylist.m3u8",
       "resolver": {
@@ -234,6 +243,7 @@
       "force": false,
       "sort": 100,
       "title": "i24 News",
+      "logo": "logo_27",
       "epgId": "i24news",
       "stream": "https://i24newshebrew-cdn.encoders.immergo.tv/master.m3u8",
       "resolver": {
@@ -245,6 +255,7 @@
       "force": false,
       "sort": 110,
       "title": "Sport 5",
+      "logo": "logo_5",
       "epgId": "5",
       "stream": "https://rgelive.akamaized.net/hls/live/2043095/live3/playlist.m3u8",
       "resolver": {
@@ -256,6 +267,7 @@
       "force": false,
       "sort": 120,
       "title": "Hidabroot",
+      "logo": "logo_97",
       "epgId": "97",
       "stream": "https://cdn.cybercdn.live/HidabrootIL/Live97/playlist.m3u8",
       "resolver": {
@@ -273,6 +285,7 @@
       "force": false,
       "sort": 130,
       "title": "Kabbalah 66",
+      "logo": "logo_66",
       "epgId": "66",
       "stream": "https://edge3.uk.kab.tv/live/tv66-heb-high/playlist.m3u8",
       "resolver": {
@@ -284,6 +297,7 @@
       "force": false,
       "sort": 140,
       "title": "Knesset 99",
+      "logo": "logo_99",
       "epgId": "99",
       "stream": "https://kneset.gostreaming.tv/p2-kneset/_definst_/myStream/playlist.m3u8",
       "resolver": {
@@ -295,6 +309,7 @@
       "force": false,
       "sort": 150,
       "title": "Channel 9",
+      "logo": "logo_9",
       "epgId": "9",
       "stream": "https://contact.gostreaming.tv/Con-11/index.m3u8",
       "resolver": {
@@ -306,6 +321,7 @@
       "force": false,
       "sort": 160,
       "title": "Channel 26",
+      "logo": "logo_26",
       "epgId": "26",
       "stream": "",
       "resolver": {
@@ -317,6 +333,7 @@
       "force": false,
       "sort": 170,
       "title": "Walla TV",
+      "logo": "logo_50",
       "epgId": "walla",
       "stream": "",
       "resolver": {

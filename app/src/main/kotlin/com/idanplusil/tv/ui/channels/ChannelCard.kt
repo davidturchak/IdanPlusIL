@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,7 +41,7 @@ import com.idanplusil.tv.R
 import com.idanplusil.tv.ui.theme.BrandColors
 
 /**
- * One channel tile: logo, name, live dot. Nothing else.
+ * One channel tile: card art, name, live dot. Nothing else.
  *
  * With no EPG in v1 there is genuinely nothing more to say, and a card that
  * pretends to carry a subtitle reads as broken. [subtitle] exists and renders
@@ -88,23 +89,27 @@ fun ChannelCard(
         modifier = modifier,
     ) {
         Column(Modifier.fillMaxWidth()) {
+            // Full-bleed card art. The bundled logos are opaque 16:9 plates
+            // carrying their own background (white, black, brand colour), so
+            // they fill the image slot edge to edge; padding them onto the
+            // dark card would read as a pasted-on sticker.
+            val logo = rememberLogoModel(channel.logo)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .padding(12.dp),
+                    .aspectRatio(16f / 9f),
                 contentAlignment = Alignment.Center,
             ) {
-                if (channel.logoUrl.isNullOrBlank()) {
+                if (logo == null) {
                     Monogram(channel.badge())
                 } else {
                     SubcomposeAsyncImage(
-                        model = channel.logoUrl,
+                        model = logo,
                         contentDescription = stringResource(R.string.cd_channel_logo),
-                        contentScale = ContentScale.Fit,
+                        contentScale = ContentScale.Crop,
                         error = { Monogram(channel.badge()) },
                         loading = { Monogram(channel.badge()) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
@@ -162,11 +167,9 @@ private fun Channel.badge(): String =
 private fun Monogram(badge: String) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f)
+            .fillMaxSize()
             .background(
                 Brush.linearGradient(listOf(BrandColors.MonogramTop, BrandColors.MonogramBottom)),
-                RoundedCornerShape(8.dp),
             ),
         contentAlignment = Alignment.Center,
     ) {

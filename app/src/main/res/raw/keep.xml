@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Channel logos are resolved from channels.json by resource *name*
+  (Resources.getIdentifier), so nothing references them statically and the
+  resource shrinker would otherwise drop them from the release build.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/logo_*" />

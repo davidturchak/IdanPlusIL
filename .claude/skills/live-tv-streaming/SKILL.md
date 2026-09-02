@@ -332,7 +332,8 @@ IdanPlusIL actually built, so a fresh session can start here.
 | 403/410 → exclude + re-resolve | `app/.../player/LoadErrorPolicy.kt` |
 | Player state machine, option stepping, one re-resolve, 12 s absolute deadline, zapping | `app/.../ui/player/PlayerViewModel.kt` |
 | Player keys (stand down when the failure pane is up) | `app/.../ui/player/PlayerActivity.kt` |
-| Grid, card (number badge, 4-signal focus), header: logo, offline chip, version label | `app/.../ui/channels/` |
+| Grid, card (full-bleed art, number-badge monogram fallback, 4-signal focus), header: logo, offline chip, version label | `app/.../ui/channels/` |
+| Card art lookup: `logo` config value → URL or bundled drawable id | `app/.../ui/channels/ChannelLogo.kt`, `app/src/main/res/drawable-nodpi/logo_*.webp`, `res/raw/keep.xml` |
 | Version label = "check for updates" control (`VersionBadge`: chrome-free tv-material `Surface`, thin ring on focus; label swaps to Checking… / You're up to date / Update to X) | `app/.../ui/channels/ChannelsScreen.kt` |
 | Self-update: manifest model, version check, streaming download + SHA-256, APK cache | `app/.../data/update/{UpdateManifest,UpdateChecker,ApkDownloader,ApkStore}.kt` (pure JVM, tested) |
 | Self-update: install launch, unknown-sources gating | `app/.../update/UpdateInstaller.kt` |
@@ -342,6 +343,7 @@ IdanPlusIL actually built, so a fresh session can start here.
 | Update-flow test build (release-signed, versionCode 1, `--install` replaces the TV app) | `tools/test-build.sh` |
 | Theme (LocalContentColor wired explicitly), tokens | `app/.../ui/theme/` |
 | Logo keying pipeline | `tools/branding/build_assets.py` |
+| Channel card art normalisation (one-off authoring) | `tools/branding/build_channel_logos.py` |
 
 Package: `com.idanplusil.tv` (app), `com.idanplusil.resolver` (JVM module).
 Debug build has applicationId suffix `.debug`.
@@ -356,7 +358,7 @@ Debug build has applicationId suffix `.debug`.
   "live": {
     "<id>": {
       "show": true, "force": false, "sort": 10,
-      "title": "Kan 11", "epgId": "11", "logo": "https://…png",
+      "title": "Kan 11", "epgId": "11", "logo": "logo_11",
       "stream": "https://…/playlist.m3u8",
       "resolver": { "type": "…", "headersRef": "browser_chrome", … }
     }
@@ -367,6 +369,14 @@ Debug build has applicationId suffix `.debug`.
 - `show` hides a channel; `force: true` plays `stream` and skips the resolver
   entirely (**requires a non-blank `stream`**); `stream` is also the tier-3
   fallback. `sort` orders the grid. `id` is the card's number badge when numeric.
+- `logo` is either an `http(s)` URL or the bare name of a drawable bundled in
+  `app/src/main/res/drawable-nodpi` (`logo_11`) - prefix decides, as in the
+  reference app's card presenter. Bundled is the norm: card art renders offline
+  on first paint and rarely changes. Regenerate the set with
+  `tools/branding/build_channel_logos.py <dir of <id>.png>` (letterboxes each
+  source onto its own edge colour at 640x360 WebP). `res/raw/keep.xml` pins
+  `@drawable/logo_*` because the name lookup is invisible to the shrinker. An
+  unknown name falls back to the monogram, so a typo costs one logo.
 - `resolver.type` is one of `direct | html_json | iframe_chase | kaltura |
   entitlement`. Unknown types fail that one channel, not the file.
 - `headersRef` names an entry in `headerSets`; headers ride on resolution *and*
@@ -428,6 +438,13 @@ confirms which build a TV runs.
   `MessagePane` shipped with this bug in v1; Retry was unreachable.
 - **`run-as` does not work on the release build** (not debuggable). Judge the
   update cache from the `update: pruned [...]` log line, not from the filesystem.
+- **To try an unpublished `channels.json` on the TV without pushing:** the
+  remote config is authoritative, so the debug build overwrites whatever you
+  seed into `files/config/` on the next fetch - unless the fetch returns 304.
+  Launch once, read the ETag the app stored (`run-as com.idanplusil.tv.debug
+  cat files/config/channels.etag`; it is a *weak* `W/"…"` ETag, not the strong
+  one `curl -I` shows), then seed `files/config/channels.json` plus that ETag
+  and relaunch. Debug variant only.
 
 - **Kaltura returns XML if `Content-Type` carries a charset.** OkHttp's
   `String.toRequestBody(mediaType)` always appends `; charset=utf-8`; Kaltura
