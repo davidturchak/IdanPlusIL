@@ -320,7 +320,7 @@ IdanPlusIL actually built, so a fresh session can start here.
 | Three-tier ladder (force → live → fallbacks), option accumulation | `resolver/.../ChannelResolutionService.kt` |
 | Techniques | `resolver/.../technique/{Direct,HtmlJson,IframeChase,Kaltura,Entitlement}Resolver.kt` |
 | One immutable OkHttp client per source, derived from a shared base | `resolver/.../http/HttpClientFactory.kt` |
-| Config model + defensive per-entry parsing + bundled overlay | `resolver/.../config/{RemoteChannelConfig,ResolverSpec,ConfigLoader,BundledDefaults}.kt` |
+| Config model, defensive per-entry parsing, remote-authoritative merge over the bundled floor | `resolver/.../config/{RemoteChannelConfig,ResolverSpec,ConfigLoader,BundledDefaults}.kt` |
 | Token cache with expiry (60 s skew) | `resolver/.../token/TokenStore.kt` |
 | Published channel list / kill switch | `config/channels.json` (fetched from raw GitHub `main`) |
 | Bundled cold-start copy - keep identical to the published one | `resolver/src/main/resources/channels.json` |

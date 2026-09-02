@@ -3,7 +3,7 @@
 An Android TV live channel streaming app.
 
 > **Status: v1, working.** A channel grid and a Media3 player, running on Android
-> TV. 24 live channels, all verified playing. Streams resolve on the device; there
+> TV. 15 live channels, all verified playing. Streams resolve on the device; there
 > is no server.
 
 ## What this is
@@ -110,7 +110,8 @@ without `javac`, pinned via `org.gradle.java.home`). Kotlin 2.2.20, Compose BOM
 
 `config/channels.json` **is** the channel list. Installed TVs fetch it from this
 repo's `main` on every launch and fall back to a cached or bundled copy, so a
-change here reaches every device with no rebuild.
+change here - including removing a channel - reaches every device with no
+rebuild. The bundled copy is only the floor for a first launch with no network.
 
 ```bash
 ./gradlew :resolver:liveCheck

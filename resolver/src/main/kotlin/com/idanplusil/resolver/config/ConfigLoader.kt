@@ -45,17 +45,17 @@ class ConfigLoader(
     }
 
     /**
-     * Overlay a freshly fetched config on top of the bundled defaults, so a
-     * partial or trimmed remote file can never remove channels the app already
-     * knows how to play.
+     * Combine the bundled copy with a freshly fetched one.
+     *
+     * The published file is authoritative for *which channels exist*: a channel
+     * removed from it disappears on the next launch, no reinstall. The bundled
+     * copy is the cold-start floor when nothing has been fetched yet, and its
+     * header sets stay available to a remote file that omits them. A remote
+     * that parses to zero channels is treated as broken and ignored.
      */
     fun merge(bundled: RemoteChannelConfig, remote: RemoteChannelConfig): RemoteChannelConfig {
-        val live = LinkedHashMap(bundled.live)
-        live.putAll(remote.live)
-        return remote.copy(
-            live = live,
-            headerSets = bundled.headerSets + remote.headerSets,
-        )
+        if (remote.live.isEmpty()) return bundled
+        return remote.copy(headerSets = bundled.headerSets + remote.headerSets)
     }
 
     companion object {

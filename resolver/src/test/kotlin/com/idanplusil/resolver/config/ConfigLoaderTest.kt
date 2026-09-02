@@ -53,9 +53,10 @@ class ConfigLoaderTest {
     }
 
     @Test
-    fun `remote config overlays bundled defaults rather than replacing them`() {
+    fun `the published config is authoritative for which channels exist`() {
         val bundled = loader.parse(
-            """{"live":{"11":{"show":true,"stream":"https://bundled/11.m3u8"},
+            """{"headerSets":{"b":{"User-Agent":"UA"}},
+                "live":{"11":{"show":true,"stream":"https://bundled/11.m3u8"},
                         "12":{"show":true,"stream":"https://bundled/12.m3u8"}}}"""
         )
         val remote = loader.parse("""{"live":{"11":{"show":true,"stream":"https://remote/11.m3u8"}}}""")
@@ -63,8 +64,18 @@ class ConfigLoaderTest {
         val merged = loader.merge(bundled, remote)
 
         assertEquals("https://remote/11.m3u8", merged.live["11"]?.stream)
-        // A trimmed remote file must not silently remove a channel the app can play.
-        assertEquals("https://bundled/12.m3u8", merged.live["12"]?.stream)
+        // Removing a channel from the published file must remove it on the TV
+        // without a reinstall - that is the whole point of the file.
+        assertEquals(null, merged.live["12"])
+        // Bundled header sets remain available to a remote that omits them.
+        assertEquals(mapOf("User-Agent" to "UA"), merged.headerSets["b"])
+    }
+
+    @Test
+    fun `a remote that parses to no channels is ignored in favour of the bundled copy`() {
+        val bundled = loader.parse("""{"live":{"11":{"show":true,"stream":"https://bundled/11.m3u8"}}}""")
+        val remote = loader.parse("""{"live":{}}""")
+        assertEquals(bundled.live, loader.merge(bundled, remote).live)
     }
 
     @Test
