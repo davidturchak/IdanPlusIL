@@ -1,0 +1,68 @@
+# ─────────────────────────────────────────────────────────────
+# Local reference material and decompilation artifacts.
+# Reference material stays on the working machine and is never committed;
+# machine-specific paths are listed in .git/info/exclude (local only).
+# The distilled architecture lives in .claude/skills/live-tv-streaming/
+# ─────────────────────────────────────────────────────────────
+*.apk
+*.dex
+*.smali
+apktool.jar
+jadx/
+jadx*.zip
+work/
+
+# ─────────────────────────────────────────────────────────────
+# Android / Gradle
+# ─────────────────────────────────────────────────────────────
+*.iml
+.gradle/
+build/
+captures/
+local.properties
+.cxx/
+release/
+*.aab
+*.ap_
+*.aar
+*.class
+bin/
+gen/
+out/
+proguard/
+lint/
+.navigation/
+output.json
+
+# Signing material — must never be committed
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# Local secrets / API keys
+secrets.properties
+apikeys.properties
+.env
+.env.*
+!.env.example
+
+# ─────────────────────────────────────────────────────────────
+# IDE
+# ─────────────────────────────────────────────────────────────
+.idea/
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+*.ipr
+*.iws
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ─────────────────────────────────────────────────────────────
+# OS / editor noise
+# ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*~
