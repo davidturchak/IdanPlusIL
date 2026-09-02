@@ -438,6 +438,11 @@ confirms which build a TV runs.
   `MessagePane` shipped with this bug in v1; Retry was unreachable.
 - **`run-as` does not work on the release build** (not debuggable). Judge the
   update cache from the `update: pruned [...]` log line, not from the filesystem.
+- **`android:banner` must be declared on `<application>`.** Without it the TV
+  launcher synthesises its own tile from the launcher icon and the app label,
+  in its own text colour - on the TCL that was a black label on our near-black
+  icon ground. The banner asset had been generated all along but never
+  referenced (and so was shrunk out of release builds).
 - **To try an unpublished `channels.json` on the TV without pushing:** the
   remote config is authoritative, so the debug build overwrites whatever you
   seed into `files/config/` on the next fetch - unless the fetch returns 304.
