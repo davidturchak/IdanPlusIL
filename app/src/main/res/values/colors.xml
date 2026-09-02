@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Kept in sync with ui/theme/Color.kt. Used where XML needs them
+         (window background, splash) and nowhere else. -->
+    <color name="brand_background">#0D0D10</color>
+    <color name="brand_surface">#16161B</color>
+    <color name="brand_orange">#E58000</color>
+</resources>

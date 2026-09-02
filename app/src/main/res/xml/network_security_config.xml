@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- HTTPS everywhere by default. Individual origins that turn out to be
+         HTTP-only get a narrow <domain-config> exception here, never a blanket
+         usesCleartextTraffic="true". -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

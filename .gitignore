@@ -66,3 +66,6 @@ apikeys.properties
 Thumbs.db
 *.swp
 *~
+
+# Kotlin 2.x build session dir
+.kotlin/

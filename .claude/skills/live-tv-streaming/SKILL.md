@@ -11,11 +11,16 @@ original is Java 8 + AsyncTask + ExoPlayer 2; recommendations below target Kotli
 + coroutines + Media3.
 
 > **Decisions already settled for IdanPlusIL — this document is descriptive, the
-> README is authoritative.** Stream resolution runs **server-side**: the client
-> calls `GET /v1/channels/{id}/stream` and does no scraping itself, so the five
-> resolution techniques below are backend concerns, not client code. The client
-> ships **Media3 only** — the libVLC fallback described later records what the
-> reference app did and is not a live option here.
+> README is authoritative.** Stream resolution runs **on the device**; there is no
+> server. The resolution techniques below are therefore the client roadmap, and
+> they are implemented in the `:resolver` module. The app ships **Media3 only** —
+> the libVLC fallback described later records what the reference app did and is
+> not a live option here.
+>
+> The structural rule that makes on-device resolution maintainable: **techniques
+> in code, parameters in config.** Selectors, JSON pointers, platform ids,
+> entitlement parameter names and header sets all live in `config/channels.json`,
+> so the things that break are pushed rather than released.
 
 ## The core problem
 
@@ -112,7 +117,7 @@ Every resolver in the original follows this ladder, and you should too:
 1. **Force flag** — `LiveProperties.isCH11force()`. If the remote config sets
    `force: true`, skip resolution entirely and play the config-supplied URL. This
    is the kill switch: when a broadcaster changes their site and the scraper
-   breaks, you flip a flag server-side and every installed client recovers without
+   breaks, you edit one line in the published config and every installed client recovers without
    an app update.
 2. **Live resolution** — run the scraper/API flow.
 3. **Static fallback** — the URL compiled into the channel catalog.
@@ -263,14 +268,30 @@ scrapers, obfuscated endpoint parameters, native key storage, and a remote kill
 switch per channel — and why a broadcaster's site change breaks every installed
 client until users update.
 
-Put the resolvers on a server instead. The app calls
-`GET /v1/channels/{id}/stream` and receives `{url, headers, cookies, expiresAt,
-options[]}`. You then get: scraper fixes deploy in minutes without an app
-release, credentials never ship to the client, one implementation serves every
-platform, and the device does no HTML parsing. The client keeps only the catalog,
-the option picker, and the player — which is most of what this skill describes.
+Putting the resolvers on a server would fix that: scraper fixes deploy in minutes
+without an app release, credentials never ship to the client, and one
+implementation serves every platform.
 
-Keep the on-device fallback path for when your backend is unreachable.
+**IdanPlusIL consciously accepted the trade-off instead**, because running a
+server is a cost the project did not want, and because the reference app
+demonstrates that a static JSON file on a CDN recovers most of the benefit. The
+mitigations that make on-device resolution survivable, and which the
+implementation relies on, are:
+
+- **The `force` kill switch** in `channels.json` — flip it and every installed
+  client bypasses a broken resolver with no release.
+- **Parameters in config, not code** — the selectors, ids and header sets that
+  break are edited in JSON, so most "resolver breakage" never needs new code at
+  all.
+- **Resolver totality and the option ladder** — a broken resolver degrades to a
+  configured stream rather than showing an error.
+- **A health harness** (`./gradlew :resolver:liveCheck`) that distinguishes a
+  channel which genuinely resolves from one that merely still plays off its
+  fallback. Without it, a dead resolver is invisible — which is exactly the state
+  several of the reference app's resolvers are in.
+
+What you give up is credential safety: anything genuinely secret still cannot
+live in the client. Do not put one there.
 
 ## Sourcing and compliance
 

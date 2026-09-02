@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IdanPlusIL</string>
+
+    <!-- Channel grid -->
+    <string name="loading_channels">Loading channels…</string>
+    <string name="offline_showing_cached">Offline — showing cached list</string>
+    <string name="channels_empty_title">No channels available</string>
+    <string name="channels_empty_detail">Every channel is currently hidden in the channel list configuration.</string>
+    <string name="channels_error_title">Can\'t reach the channel list</string>
+    <string name="error_no_network">No network connection.</string>
+    <string name="error_timeout">The channel list took too long to load.</string>
+    <string name="error_bad_response">The channel list server returned an error.</string>
+    <string name="error_malformed">The channel list could not be read.</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_back_to_channels">Back to channels</string>
+    <plurals name="channel_count">
+        <item quantity="one">%d channel</item>
+        <item quantity="other">%d channels</item>
+    </plurals>
+
+    <!-- Player -->
+    <string name="live">LIVE</string>
+    <string name="playback_failed_title">Can\'t play this channel</string>
+    <string name="playback_error_unresolvable">No working stream was found for this channel.</string>
+    <string name="playback_error_network">The stream could not be reached.</string>
+    <string name="playback_error_forbidden">Access to this stream was refused.</string>
+    <string name="playback_error_unsupported">This stream format is not supported.</string>
+    <string name="playback_error_unknown">Playback stopped unexpectedly.</string>
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_channel_logo">Channel logo</string>
+    <string name="cd_app_logo">IdanPlusIL</string>
+</resources>
