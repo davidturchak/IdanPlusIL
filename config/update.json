@@ -1,8 +1,8 @@
 {
-  "versionCode": 9,
-  "versionName": "1.4.3",
-  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.4.3/IdanPlusIL-1.4.3.apk",
-  "sha256": "fc4c301e08aa3ac737f6acf28bd6cafed734dfb2944fcdf375838f0f3c227c43",
-  "sizeBytes": 2506048,
-  "notes": "App renamed to Idan Plus IL"
+  "versionCode": 10,
+  "versionName": "1.4.4",
+  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.4.4/IdanPlusIL-1.4.4.apk",
+  "sha256": "ac41d4669e217ec0711aac9651c5343641c3ad7ab66de352f50e09dfa2ed6e30",
+  "sizeBytes": 2506033,
+  "notes": "Playback recovers after mid-stream failures; faster channel zapping; more reliable updates"
 }
