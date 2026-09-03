@@ -321,16 +321,16 @@ IdanPlusIL actually built, so a fresh session can start here.
 | Techniques | `resolver/.../technique/{Direct,HtmlJson,IframeChase,Kaltura,Entitlement}Resolver.kt` |
 | One immutable OkHttp client per source, derived from a shared base | `resolver/.../http/HttpClientFactory.kt` |
 | Config model, defensive per-entry parsing, remote-authoritative merge over the bundled floor | `resolver/.../config/{RemoteChannelConfig,ResolverSpec,ConfigLoader,BundledDefaults}.kt` |
-| Token cache with expiry (60 s skew) | `resolver/.../token/TokenStore.kt` |
+| Token cache with expiry (60 s skew) and granted URL; a 403-driven re-resolve passes `fresh=true` so the rejected ticket is dropped first | `resolver/.../token/TokenStore.kt`, `ChannelResolutionService.resolve(fresh)` |
 | Published channel list / kill switch | `config/channels.json` (fetched from raw GitHub `main`) |
-| Bundled cold-start copy - keep identical to the published one | `resolver/src/main/resources/channels.json` |
+| Bundled cold-start copy | `config/channels.json`, copied into the resolver's resources by `processResources` (no mirrored file) |
 | Live health harness | `resolver/src/liveCheck/.../LiveCheckMain.kt` → `./gradlew :resolver:liveCheck` |
 | Fixture tests, fake HTTP facade | `resolver/src/test/...`, `FakeHttpFacade.kt` |
 | Config fetch (ETag), disk cache (temp-then-rename), 3-source ladder | `app/.../data/config/{RemoteConfigSource,ConfigCache,ChannelRepository}.kt` |
 | Dependency graph (hand-rolled, no Hilt) | `app/.../di/AppContainer.kt` |
 | Media3 assembly: SurfaceView, decoder fallback, chunkless HLS, 30 s buffer | `app/.../player/PlayerFactory.kt` |
 | 403/410 → exclude + re-resolve | `app/.../player/LoadErrorPolicy.kt` |
-| Player state machine, option stepping, one re-resolve, 12 s absolute deadline, zapping | `app/.../ui/player/PlayerViewModel.kt` |
+| Player state machine: recovery *episodes* (option stepping, one re-resolve, one 15 s deadline per episode; a failure after a picture was up opens a new episode), zapping cancels the in-flight resolve | `app/.../ui/player/PlayerViewModel.kt` |
 | Player keys (stand down when the failure pane is up) | `app/.../ui/player/PlayerActivity.kt` |
 | Grid, card (full-bleed art, number-badge monogram fallback, 4-signal focus), header: logo, offline chip, version label | `app/.../ui/channels/` |
 | Card art lookup: `logo` config value → URL or bundled drawable id | `app/.../ui/channels/ChannelLogo.kt`, `app/src/main/res/drawable-nodpi/logo_*.webp`, `res/raw/keep.xml` |
@@ -414,9 +414,9 @@ wordmark is baked into the artwork and was not redrawn.
    multi-line playlists to split into `options[]`. The URL is returned by a JNI
    call and sits as a plain string in its native library - it contains the
    reference app's name and **must never appear in a tracked file**.
-3. Edit `config/channels.json` (and mirror to
-   `resolver/src/main/resources/channels.json`), re-run liveCheck, push. No
-   rebuild: installed TVs refresh on next launch. Use `force: true` as the
+3. Edit `config/channels.json`, re-run liveCheck, push. No rebuild: installed
+   TVs refresh on next launch (the build copies the same file in as the
+   bundled floor, so there is nothing to mirror). Use `force: true` as the
    stop-gap when a technique breaks and a direct URL is known.
 
 ### Operating procedure: cutting a release
@@ -498,7 +498,14 @@ confirms which build a TV runs.
 - **When the failure pane is up, the player's `onKeyDown` must return `super`**,
   or Retry/Back are unreachable and centre toggles play/pause on a dead stream.
 - **ExoPlayer retries a dead host with backoff for 30 s+ before erroring.** The
-  ViewModel enforces an absolute 12 s per-channel first-frame deadline.
+  ViewModel enforces one absolute 15 s deadline per recovery episode (resolve
+  plus first frame). The deadline is refreshed when a stream that was playing
+  fails; without that, every mid-playback fallback expired on arrival.
+- **The player fetches through the base OkHttp client, not the resolver's.**
+  So only what `ChannelResolutionService` copies onto the option reaches the
+  CDN: User-Agent, Referer, Origin, Accept-Language and the source's cookies
+  (`MEDIA_HEADERS`). Page-navigation headers from a header set are dropped on
+  purpose; no browser sends `sec-fetch-dest: document` for a segment.
 - **The system "java 21" on the build machine is a JRE with no `javac`.** JDK 17
   is pinned via `org.gradle.java.home` in `gradle.properties`.
 - **Version ceilings:** Gradle 8.11.1 caps AGP at 8.10.1; only `android-35` is

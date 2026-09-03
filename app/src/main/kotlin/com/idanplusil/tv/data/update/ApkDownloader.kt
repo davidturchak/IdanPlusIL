@@ -6,6 +6,7 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -48,7 +49,10 @@ class ApkDownloader(client: OkHttpClient) {
             return@flow
         }
 
-        val part = store.partFor(manifest.versionCode)
+        // Unique per attempt: a cancelled download may still be blocked in a
+        // socket read when the next one starts, and its cleanup must not touch
+        // the new file.
+        val part = store.newPartFor(manifest.versionCode)
         val target = store.fileFor(manifest.versionCode)
         try {
             client.newCall(Request.Builder().url(manifest.apkUrl).build()).execute().use { response ->
@@ -107,6 +111,12 @@ class ApkDownloader(client: OkHttpClient) {
             emit(DownloadEvent.Failed(UpdateError.Timeout))
         } catch (e: IOException) {
             emit(DownloadEvent.Failed(UpdateError.NoNetwork))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Anything else here is the manifest's fault (a URL OkHttp rejects,
+            // say), and a bad manifest must never take the process down.
+            emit(DownloadEvent.Failed(UpdateError.Malformed))
         } finally {
             // No-op after a successful rename; cleans up on failure and cancellation.
             part.delete()

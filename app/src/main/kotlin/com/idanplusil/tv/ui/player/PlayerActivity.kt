@@ -53,7 +53,8 @@ class PlayerActivity : ComponentActivity() {
                     factory = PlayerViewModel.Factory(
                         container.channelRepository,
                         container.resolution,
-                        PlayerFactory(this, container.baseHttpClient),
+                        // Application context: the factory outlives this Activity inside the ViewModel.
+                        PlayerFactory(applicationContext, container.baseHttpClient),
                     )
                 )
                 viewModel = vm

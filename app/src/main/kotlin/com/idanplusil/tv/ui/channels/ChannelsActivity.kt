@@ -20,6 +20,8 @@ class ChannelsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val container = (application as IdanPlusApplication).container
         val installer = container.updateInstaller
+        // The ViewModel keeps this lambda across configuration changes; it must not hold the Activity.
+        val appContext = applicationContext
 
         setContent {
             IdanPlusTheme {
@@ -29,7 +31,7 @@ class ChannelsActivity : ComponentActivity() {
                 val state by vm.state.collectAsStateWithLifecycle()
 
                 val updateVm: UpdateViewModel = viewModel(
-                    factory = UpdateViewModel.Factory(container) { installer.canRequestInstalls(this) }
+                    factory = UpdateViewModel.Factory(container) { installer.canRequestInstalls(appContext) }
                 )
                 val updateState by updateVm.state.collectAsStateWithLifecycle()
                 // Coming back from the "install unknown apps" settings screen.

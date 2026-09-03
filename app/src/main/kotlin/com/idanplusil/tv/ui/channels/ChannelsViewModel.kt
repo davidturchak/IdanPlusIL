@@ -3,7 +3,6 @@ package com.idanplusil.tv.ui.channels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.idanplusil.resolver.config.RemoteChannelConfig
 import com.idanplusil.tv.data.config.ChannelRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,10 +13,6 @@ class ChannelsViewModel(private val repository: ChannelRepository) : ViewModel()
 
     private val _state = MutableStateFlow<ChannelsUiState>(ChannelsUiState.Loading)
     val state: StateFlow<ChannelsUiState> = _state.asStateFlow()
-
-    @Volatile
-    var config: RemoteChannelConfig? = null
-        private set
 
     init {
         // Render immediately from the disk cache or the bundled copy, then
@@ -32,7 +27,6 @@ class ChannelsViewModel(private val repository: ChannelRepository) : ViewModel()
     }
 
     private fun emit(snapshot: com.idanplusil.tv.data.config.CatalogSnapshot) {
-        config = snapshot.config
         _state.value = when {
             snapshot.channels.isNotEmpty() -> ChannelsUiState.Content(snapshot.channels, stale = snapshot.error != null)
             snapshot.error != null -> ChannelsUiState.Error(snapshot.error)

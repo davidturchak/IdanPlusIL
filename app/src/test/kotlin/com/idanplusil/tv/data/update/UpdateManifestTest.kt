@@ -47,6 +47,9 @@ class UpdateManifestTest {
         assertNull(UpdateManifest.parse(sample.replace("\"sha256\": \"${"ab".repeat(32)}\",", "")))
         assertNull(UpdateManifest.parse(sample.replace("ab".repeat(32), "ab".repeat(31))))
         assertNull(UpdateManifest.parse(sample.replace("https://", "http://")))
+        // Prefixed but unparseable: OkHttp would throw building the request.
+        assertNull(UpdateManifest.parse(sample.replace("https://github.com/", "https://github.com:abc/")))
+        assertNull(UpdateManifest.parse(sample.replace(Regex("\"apkUrl\": \"[^\"]*\""), "\"apkUrl\": \"https://\"")))
         assertNull(UpdateManifest.parse(sample.replace("2237275", "0")))
         assertNull(UpdateManifest.parse(sample.replace("\"versionCode\": 2", "\"versionCode\": 0")))
     }

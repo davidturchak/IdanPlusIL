@@ -5,8 +5,9 @@ import com.idanplusil.resolver.config.RemoteChannelConfig
 import com.idanplusil.resolver.http.HttpClientFactory
 import com.idanplusil.resolver.http.SourceSpec
 import com.idanplusil.resolver.model.Channel
-import com.idanplusil.resolver.model.ResolveOutcome
 import com.idanplusil.resolver.model.StreamOption
+import com.idanplusil.resolver.technique.EntitlementResolver
+import com.idanplusil.resolver.token.TokenStore
 
 /**
  * The three-tier fallback ladder, in exactly one place.
@@ -21,16 +22,23 @@ class ChannelResolutionService(
     private val registry: ResolverRegistry,
     private val clients: HttpClientFactory,
     private val budgetMs: Long = ResolverRegistry.DEFAULT_BUDGET_MS,
+    private val tokenStore: TokenStore? = null,
 ) {
 
-    suspend fun resolve(channel: Channel, config: RemoteChannelConfig): List<StreamOption> {
+    /**
+     * @param fresh Drop any cached entitlement for the channel first. The player
+     *   passes this when a CDN has just answered 403: handing back the ticket
+     *   it rejected would make the re-resolve a no-op.
+     */
+    suspend fun resolve(channel: Channel, config: RemoteChannelConfig, fresh: Boolean = false): List<StreamOption> {
         val cfg: ChannelConfig? = config.live[channel.id]
+        if (fresh) tokenStore?.invalidatePrefix(EntitlementResolver.cacheKeyPrefix(channel.id))
 
         // Tier 1 - the kill switch. Flipping `force` in the published JSON makes
         // every installed client bypass a broken resolver with no app release.
         if (cfg?.force == true && !cfg.stream.isNullOrBlank()) {
             return listOf(
-                StreamOption(cfg.stream, LABEL_CONFIG, PRIORITY_FORCED, config.headersFor(cfg.resolver))
+                StreamOption(cfg.stream, LABEL_CONFIG, PRIORITY_FORCED, config.headersFor(cfg.resolver).forMedia())
             )
         }
 
@@ -44,9 +52,17 @@ class ChannelResolutionService(
             )
             val outcome = registry.resolve(channel, spec, clients.facadeFor(source), budgetMs)
             outcome.optionsOrEmpty.map { option ->
-                // Carry the source's header set onto the option: the player must
-                // replay it on every segment request, not just the manifest.
-                if (option.headers.isEmpty()) option.copy(headers = headers) else option
+                // The player fetches every segment through its own client, so
+                // whatever identified us during resolution - browser UA, the
+                // referring page, session cookies - has to ride on the option.
+                // The option's own headers win; the source set fills the gaps.
+                val cookie = clients.cookieHeaderFor(source, option.url)
+                val merged = buildMap {
+                    putAll(headers.forMedia())
+                    if (cookie != null) put("Cookie", cookie)
+                    putAll(option.headers)
+                }
+                option.copy(headers = merged, cookies = option.cookies ?: cookie)
             }
         }.orEmpty()
 
@@ -54,7 +70,7 @@ class ChannelResolutionService(
         // policy has somewhere to go when a resolved URL turns out to be dead.
         val fallbacks = listOfNotNull(
             cfg?.stream?.takeIf { it.isNotBlank() }
-                ?.let { StreamOption(it, LABEL_CONFIG, PRIORITY_CONFIG, config.headersFor(cfg.resolver)) },
+                ?.let { StreamOption(it, LABEL_CONFIG, PRIORITY_CONFIG, config.headersFor(cfg.resolver).forMedia()) },
             channel.bundledFallbackUrl?.takeIf { it.isNotBlank() }
                 ?.let { StreamOption(it, LABEL_BUNDLED, PRIORITY_BUNDLED) },
         )
@@ -74,5 +90,18 @@ class ChannelResolutionService(
         const val PRIORITY_FORCED = 1000
         const val PRIORITY_CONFIG = 50
         const val PRIORITY_BUNDLED = 10
+
+        /**
+         * The part of a browser header set that belongs on a media request. A
+         * header set describes a page navigation (`Accept: text/html`,
+         * `sec-fetch-dest: document`, `Upgrade-Insecure-Requests`); a real
+         * browser sends none of that when its player fetches a playlist or a
+         * segment, and a CDN that inspects them sees a fingerprint no browser
+         * produces. What the CDN does check is who is asking and from where.
+         */
+        val MEDIA_HEADERS = setOf("user-agent", "referer", "origin", "cookie", "accept-language")
+
+        fun Map<String, String>.forMedia(): Map<String, String> =
+            filterKeys { it.lowercase() in MEDIA_HEADERS }
     }
 }

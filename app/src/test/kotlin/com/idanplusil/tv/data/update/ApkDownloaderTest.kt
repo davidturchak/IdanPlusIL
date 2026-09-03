@@ -126,10 +126,10 @@ class ApkDownloaderTest {
     @Test
     fun `prune removes parts and superseded builds`() {
         store.ensureDir()
-        listOf("update-1.apk", "update-2.apk", "update-2.apk.part", "update-3.apk", "junk.txt")
+        listOf("update-1.apk", "update-2.apk", "update-2.apk.part", "update-3.1234.apk.part", "update-3.apk", "junk.txt")
             .forEach { File(store.dir, it).writeText("x") }
         store.prune(currentVersionCode = 2)
         assertEquals(listOf("update-3.apk"), leftovers())
-        assertFalse(store.partFor(2).exists())
+        assertFalse(store.newPartFor(2).exists())
     }
 }

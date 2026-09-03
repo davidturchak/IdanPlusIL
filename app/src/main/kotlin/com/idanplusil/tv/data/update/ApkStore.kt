@@ -7,13 +7,14 @@ import java.security.MessageDigest
  * The directory downloaded APKs live in (`cacheDir/updates`).
  *
  * Files are named `update-<versionCode>.apk`; an in-progress download is
- * `update-<versionCode>.apk.part`. Plain java.io so it is unit-testable.
+ * `update-<versionCode>.<attempt>.apk.part`. Plain java.io so it is unit-testable.
  */
 class ApkStore(val dir: File) {
 
     fun fileFor(versionCode: Int): File = File(dir, "update-$versionCode.apk")
 
-    fun partFor(versionCode: Int): File = File(dir, "update-$versionCode.apk.part")
+    /** A fresh in-progress file for one download attempt; never reused across attempts. */
+    fun newPartFor(versionCode: Int): File = File(dir, "update-$versionCode.${System.nanoTime()}.apk.part")
 
     fun ensureDir(): Boolean = dir.isDirectory || dir.mkdirs()
 
@@ -56,7 +57,7 @@ class ApkStore(val dir: File) {
     }
 
     companion object {
-        private val PATTERN = Regex("""update-(\d+)\.apk(\.part)?""")
+        private val PATTERN = Regex("""update-(\d+)(?:\.\d+)?\.apk(\.part)?""")
 
         fun sha256(file: File): String {
             val digest = MessageDigest.getInstance("SHA-256")

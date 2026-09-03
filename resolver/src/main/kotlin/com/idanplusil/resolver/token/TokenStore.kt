@@ -1,17 +1,28 @@
 package com.idanplusil.resolver.token
 
+/** A cached entitlement, with the expiry it was issued under. */
+data class CachedToken(
+    val token: String,
+    val expiresAtMillis: Long,
+    /** The URL the issuer granted the token for, when it named one. */
+    val grantedUrl: String? = null,
+)
+
 /**
  * Cache for short-lived entitlement tokens.
  *
  * The expiry is the point. The reference app caches tokens bare and discovers
  * staleness only when a segment 403s, leaning on the player to recover. Storing
- * [expiresAtMillis] lets us re-resolve proactively and treat the 403 path as a
- * safety net rather than the mechanism.
+ * the expiry lets us re-resolve proactively and treat the 403 path as a safety
+ * net rather than the mechanism - and when that net does catch a 403, the
+ * caller drops the cached token with [invalidatePrefix] so the re-resolve mints
+ * a fresh one instead of handing back the ticket the CDN just rejected.
  */
 interface TokenStore {
-    fun get(key: String, nowMillis: Long): String?
-    fun put(key: String, token: String, expiresAtMillis: Long)
+    fun get(key: String, nowMillis: Long): CachedToken?
+    fun put(key: String, token: CachedToken)
     fun invalidate(key: String)
+    fun invalidatePrefix(prefix: String)
 
     companion object {
         /** Treat a token as expired this long before it actually is. */
@@ -20,24 +31,26 @@ interface TokenStore {
 }
 
 class InMemoryTokenStore : TokenStore {
-    private data class Entry(val token: String, val expiresAtMillis: Long)
+    private val map = java.util.concurrent.ConcurrentHashMap<String, CachedToken>()
 
-    private val map = java.util.concurrent.ConcurrentHashMap<String, Entry>()
-
-    override fun get(key: String, nowMillis: Long): String? {
+    override fun get(key: String, nowMillis: Long): CachedToken? {
         val e = map[key] ?: return null
         if (nowMillis >= e.expiresAtMillis - TokenStore.SKEW_MILLIS) {
             map.remove(key)
             return null
         }
-        return e.token
+        return e
     }
 
-    override fun put(key: String, token: String, expiresAtMillis: Long) {
-        map[key] = Entry(token, expiresAtMillis)
+    override fun put(key: String, token: CachedToken) {
+        map[key] = token
     }
 
     override fun invalidate(key: String) {
         map.remove(key)
+    }
+
+    override fun invalidatePrefix(prefix: String) {
+        map.keys.removeIf { it.startsWith(prefix) }
     }
 }

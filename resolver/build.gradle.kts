@@ -10,6 +10,13 @@ kotlin {
     }
 }
 
+// The bundled channel config IS the published one. Copying it into the
+// resources at build time keeps the cold-start floor identical to the file the
+// TVs fetch, with no hand-mirrored copy to forget.
+tasks.processResources {
+    from(rootProject.file("config/channels.json"))
+}
+
 sourceSets {
     // Live channel-health harness. Run on demand, never part of `check`.
     create("liveCheck") {

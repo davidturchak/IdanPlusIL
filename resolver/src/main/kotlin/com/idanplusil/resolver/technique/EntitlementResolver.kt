@@ -11,6 +11,7 @@ import com.idanplusil.resolver.model.Channel
 import com.idanplusil.resolver.model.ResolveOutcome
 import com.idanplusil.resolver.model.Stage
 import com.idanplusil.resolver.model.StreamOption
+import com.idanplusil.resolver.token.CachedToken
 import com.idanplusil.resolver.token.TokenStore
 import java.net.URLEncoder
 import kotlinx.coroutines.async
@@ -115,11 +116,13 @@ class EntitlementResolver(
         // Distinct by construction even when config priorities tie.
         val priority = (target.priority ?: (100 - index * 10)) * 10 - index
         val now = clockMillis()
-        val cacheKey = "entitlement:${channel.id}:$manifest"
+        val cacheKey = "${cacheKeyPrefix(channel.id)}$manifest"
         val expiresAt = now + cfg.ticketTtlSeconds * 1000
 
         tokenStore?.get(cacheKey, now)?.let { cached ->
-            return@runCatching option(manifest, cached, label, priority, expiresAt)
+            // Replay exactly what was granted: the URL the response named and the
+            // expiry it was issued under, not the configured URL and a fresh TTL.
+            return@runCatching option(cached.grantedUrl ?: manifest, cached.token, label, priority, cached.expiresAtMillis)
         }
 
         val url = cfg.entitlementUrl
@@ -137,11 +140,11 @@ class EntitlementResolver(
         // A denial is the answer, not something to retry against other paths.
         if (!parsed.granted) throw Denied("denied (caseId=${parsed.caseId})")
 
-        val ticket = parsed.tickets.first()
-        tokenStore?.put(cacheKey, ticket.ticket, expiresAt)
+        val ticket = parsed.tickets.first { it.ticket.isNotBlank() }
 
         // Entitle exactly the URL the response named.
         val granted = ticket.url.takeIf { it.isNotBlank() }?.normalizeProtocolRelative() ?: manifest
+        tokenStore?.put(cacheKey, CachedToken(ticket.ticket, expiresAt, grantedUrl = granted))
         option(granted, ticket.ticket, label, priority, expiresAt)
     }
 
@@ -159,4 +162,9 @@ class EntitlementResolver(
     )
 
     private fun String.urlEncoded(): String = URLEncoder.encode(this, "UTF-8")
+
+    companion object {
+        /** Every cached ticket for a channel lives under this prefix. */
+        fun cacheKeyPrefix(channelId: String): String = "entitlement:$channelId:"
+    }
 }

@@ -48,6 +48,21 @@ class ChannelResolutionServiceTest {
     }
 
     @Test
+    fun `only media-relevant headers from a browser header set reach the player`() = runTest {
+        val config = loader.parse(
+            """{"headerSets":{"chrome":{"User-Agent":"Chrome/140","Accept":"text/html","sec-fetch-dest":"document",
+                 "Upgrade-Insecure-Requests":"1","Accept-Language":"he-IL","Referer":"https://site/"}},
+                "live":{"11":{"show":true,"force":true,"stream":"https://forced/x.m3u8",
+                 "resolver":{"type":"direct","headersRef":"chrome"}}}}"""
+        )
+        val headers = service.resolve(channel, config).single().headers
+        assertEquals(
+            mapOf("User-Agent" to "Chrome/140", "Accept-Language" to "he-IL", "Referer" to "https://site/"),
+            headers,
+        )
+    }
+
+    @Test
     fun `options come back sorted by priority and de-duplicated`() = runTest {
         val config = loader.parse(
             """{"live":{"11":{"show":true,"stream":"https://bundled/f.m3u8"}}}"""

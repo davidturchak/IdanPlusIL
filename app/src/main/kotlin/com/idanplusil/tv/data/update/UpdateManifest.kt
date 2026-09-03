@@ -3,6 +3,7 @@ package com.idanplusil.tv.data.update
 import com.idanplusil.resolver.config.ConfigLoader
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
  * The published `config/update.json`.
@@ -31,7 +32,8 @@ data class UpdateManifest(
             versionCode > 0 &&
                 sizeBytes > 0 &&
                 versionName.isNotBlank() &&
-                apkUrl.startsWith("https://") &&
+                // Parseable, not just prefixed: OkHttp throws on a malformed URL at request-build time.
+                apkUrl.toHttpUrlOrNull()?.isHttps == true &&
                 sha256.length == 64 &&
                 sha256.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
     }

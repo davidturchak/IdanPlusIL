@@ -24,6 +24,14 @@ done
 
 cd "$(git rev-parse --show-toplevel)"
 [[ -f keystore.properties ]] || { echo "keystore.properties missing: the test build must carry the release signature" >&2; exit 1; }
+[[ -f tools/release-signer.sha256 ]] || { echo "tools/release-signer.sha256 missing" >&2; exit 1; }
+EXPECTED_SIGNER="$(tr -d '[:space:]' < tools/release-signer.sha256 | tr 'A-F' 'a-f')"
+APKSIGNER="$(command -v apksigner || true)"
+if [[ -z "$APKSIGNER" ]]; then
+  SDK="${ANDROID_HOME:-$(sed -n 's/^sdk\.dir=//p' local.properties 2>/dev/null || true)}"
+  APKSIGNER="$(ls -d "$SDK"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)"
+fi
+[[ -x "${APKSIGNER:-}" ]] || { echo "apksigner not found (install build-tools or put it on PATH)" >&2; exit 1; }
 
 ARGS=(-Pidanplusil.versionCode=1 -Pidanplusil.versionName=0.0.1-test)
 [[ -n "$MANIFEST" ]] && ARGS+=("-PupdateManifestUrl=$MANIFEST")
@@ -34,6 +42,15 @@ SRC=app/build/outputs/apk/release/app-release.apk
 OUT=app/build/outputs/apk/release/IdanPlusIL-test-vc1.apk
 [[ -f "$SRC" ]] || { echo "unsigned build produced; is keystore.properties readable?" >&2; exit 1; }
 mv "$SRC" "$OUT"
+
+# The whole point of this build is to exercise the real update path, which the
+# installed app only accepts from the release signer. Check, do not eyeball.
+ACTUAL_SIGNER="$("$APKSIGNER" verify --print-certs "$OUT" | sed -n 's/.*certificate SHA-256 digest: *//p' | head -1 | tr 'A-F' 'a-f')"
+if [[ -z "$ACTUAL_SIGNER" || "$ACTUAL_SIGNER" != "$EXPECTED_SIGNER" ]]; then
+  echo "APK is signed with the WRONG key (${ACTUAL_SIGNER:-unreadable}); the TV would reject the update it downloads" >&2
+  exit 1
+fi
+echo "Signer OK: $ACTUAL_SIGNER"
 echo "APK: $OUT"
 
 if (( INSTALL )); then

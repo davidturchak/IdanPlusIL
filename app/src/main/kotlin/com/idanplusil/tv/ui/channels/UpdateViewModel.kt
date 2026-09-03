@@ -87,6 +87,9 @@ class UpdateViewModel(
 
     fun startDownload() {
         val manifest = _state.value.manifestOrNull ?: return
+        // The old producer may still be blocked in a socket read; each attempt
+        // writes its own .part file, so it can unwind on its own without
+        // touching this one, and its cancelled collector can no longer update state.
         downloadJob?.cancel()
         downloadJob = viewModelScope.launch {
             _state.value = UpdateUiState.Downloading(manifest, 0, 0)

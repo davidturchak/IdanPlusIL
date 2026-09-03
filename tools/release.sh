@@ -134,11 +134,13 @@ gh release create "$TAG" "$ASSET" --repo "$REPO_SLUG" --verify-tag \
   --title "Idan Plus IL $VERSION" --notes "$NOTES"
 
 note "Waiting for $APK_URL"
+ASSET_LIVE=0
 for attempt in $(seq 1 12); do
-  if curl -sfIL "$APK_URL" >/dev/null; then echo "asset is live"; break; fi
-  (( attempt < 12 )) || die "asset URL did not resolve; see rollback steps above"
+  if curl -sfIL "$APK_URL" >/dev/null; then echo "asset is live"; ASSET_LIVE=1; break; fi
   sleep 5
 done
+# A `die` inside an || list bypasses the ERR trap, so print the hint by hand.
+if (( ! ASSET_LIVE )); then rollback_hint; die "asset URL did not resolve"; fi
 
 # ---- 7. publish the manifest ------------------------------------------------
 note "Pushing main"

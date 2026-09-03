@@ -15,7 +15,8 @@ data class EntitlementResponse(
     val status: String? = null,
     val tickets: List<EntitlementTicket> = emptyList(),
 ) {
-    val granted: Boolean get() = caseId == "1" && tickets.isNotEmpty()
+    /** A ticket object without a ticket string is a denial dressed as a grant. */
+    val granted: Boolean get() = caseId == "1" && tickets.any { it.ticket.isNotBlank() }
 }
 
 @Serializable

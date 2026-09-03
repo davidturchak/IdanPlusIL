@@ -254,9 +254,9 @@ from its static fallback, which means its resolver has quietly died and no amoun
 of "does it play" testing would have told you.
 
 To fix a channel: edit its entry (a `direct` resolver takes a single `stream` or
-an `options[]` list of candidates), mirror the file to
-`resolver/src/main/resources/channels.json` so a fresh install starts from the
-same data, re-run `liveCheck`, push. `force: true` plays `stream` and skips the
+an `options[]` list of candidates), re-run `liveCheck`, push. The same file is
+copied into the app at build time as the cold-start floor, so a fresh install
+starts from the data that was published when it was built. `force: true` plays `stream` and skips the
 resolver - the stop-gap when a technique breaks. `show: false` hides a channel.
 The full schema and per-technique keys are in the skill document.
 

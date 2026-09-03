@@ -68,7 +68,7 @@ class AppContainer(private val appContext: Context) {
     }
 
     val resolution: ChannelResolutionService by lazy {
-        ChannelResolutionService(resolverRegistry, httpClients)
+        ChannelResolutionService(resolverRegistry, httpClients, tokenStore = tokenStore)
     }
 
     val channelRepository: ChannelRepository by lazy {
