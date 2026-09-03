@@ -422,29 +422,34 @@ wordmark is baked into the artwork and was not redrawn.
 ### Operating procedure: cutting a release
 
 1. Commit and push the work to `main` (the script refuses a dirty or out-of-sync
-   tree). Pushing is the user's step in practice: **this session cannot run
-   `git push`** (permission-denied), so hand over the push commands rather than
-   retrying.
+   tree). Pushing is the user's step in practice: hand over the exact push
+   commands rather than running or retrying them; `gh release create` is fine
+   to run from here once the tag is on the remote.
 2. `tools/release.sh X.Y.Z --notes "one line shown on the TV prompt"`
-   (`--dry-run` first if unsure). It bumps `idanplusil.versionCode`/`versionName`
+   (`--dry-run` first if unsure; it leaves the release commit and tag in place
+   and prints the undo). It bumps `idanplusil.versionCode`/`versionName`
    in `gradle.properties`, runs the JVM tests, builds, checks the signer against
    `tools/release-signer.sha256`, writes `config/update.json`, pushes the tag,
    creates the GitHub Release, waits for the asset, then pushes `main`.
 3. **Do not install on the TV.** The user updates from the app (launch, or press
    the version label). raw.githubusercontent lags up to 5 min.
-5. **Split release (used for v1.4.3):** when local `main` is ahead of origin
-   the script's sync check fails, so do steps 2-5 by hand (bump
-   `gradle.properties`, `./gradlew -q :resolver:test :app:testReleaseUnitTest
-   :app:assembleRelease`, `apksigner verify --print-certs` against
-   `tools/release-signer.sha256`, copy to `IdanPlusIL-X.Y.Z.apk`, `jq` the
-   manifest, commit `Release vX.Y.Z (versionCode N)`, annotated tag), then hand
-   the user: push the tag, then `gh release create ... --verify-tag`, then push
-   `main`. `gh release create` itself is allowed here and is fine to run once
-   the tag is on the remote; verify with `curl -sfIL` on the asset URL and
-   compare the downloaded sha256 with `config/update.json`. If the user pushes
-   `main` early, get the tag and release up fast: TVs in the gap just fail the
-   download and recover on the next check.
-4. To re-test the update flow itself: `tools/test-build.sh --install` puts a
+4. **Split release (used for v1.4.3):** the script's sync check fails while
+   local `main` is ahead of origin, so have the user push `main` first, then run
+   `tools/release.sh X.Y.Z --notes "..." --dry-run` here: that is the script's
+   own steps 2-5 (bump, test, build, signer guard, manifest, commit, annotated
+   tag) with all its checks, nothing pushed; keep the commit and tag it leaves.
+   Then hand the user `git push origin refs/tags/vX.Y.Z`; run
+   `gh release create vX.Y.Z <asset> --repo davidturchak/IdanPlusIL --verify-tag`
+   here with the exact APK the dry run produced; poll the asset URL with
+   `curl -sfIL` until it resolves; then hand the user `git push origin main`
+   (full command sequence in README "Cutting a release"). Only if `main`
+   cannot be pushed first, do the script's steps 2-5 by hand in the order its
+   header lists them, staging only `gradle.properties` and `config/update.json`
+   - never type the manifest values; derive them from the renamed asset. If the
+   user pushes `main` early, get the tag and release up fast: TVs in the gap
+   just fail the download and recover on the next check. If the APK has to be
+   rebuilt after `main` is out, push a corrected manifest immediately.
+5. To re-test the update flow itself: `tools/test-build.sh --install` puts a
    release-signed versionCode-1 build on the TV; the live release then shows up as
    an update. The user asked to be the one who installs otherwise.
 

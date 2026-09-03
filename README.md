@@ -1,9 +1,11 @@
 # Idan Plus IL
 
 An Android TV live channel streaming app. "Idan Plus IL" is the display name
-(launcher label, update prompts, release titles); the package, gradle
-properties, keystore alias and APK file names keep the unspaced `IdanPlusIL` /
-`idanplusil` form and must not be renamed - installed TVs key updates on them.
+(launcher label, update prompts, release titles). Every identifier keeps the
+unspaced `IdanPlusIL` / `idanplusil` form and must not be renamed: installed
+TVs match updates on the package name (`com.idanplusil.tv`) and the signing
+key, and the tooling reads the rest (the `idanplusil.*` gradle properties, the
+keystore alias, the `IdanPlusIL-X.Y.Z.apk` asset name in `config/update.json`).
 
 > **Status: v1, working.** A channel grid and a Media3 player, running on Android
 > TV. 15 live channels, all verified playing. Streams resolve on the device; there
@@ -155,7 +157,7 @@ every device.
 
 ```bash
 tools/release.sh 1.2.0 --notes "One line the TV shows on the update prompt"
-tools/release.sh 1.2.0 --dry-run     # everything except pushing
+tools/release.sh 1.2.0 --dry-run     # everything except pushing; leaves the release commit and tag (it prints the undo)
 ```
 
 The script bumps `idanplusil.versionCode`/`versionName` in `gradle.properties`,
@@ -185,25 +187,32 @@ If the script fails after the tag was pushed it prints the rollback commands
 
 The script requires `main` to be in sync with `origin/main`, so push any
 pending work first. When the release has to be split between people or
-machines (for example, one side cannot push), run the same steps by hand in
-the same order:
+machines (for example, one side cannot push), let the script do the local
+half and run the remote half by hand, in the same order the script would:
 
 ```bash
-# bump idanplusil.versionCode (+1) and idanplusil.versionName in gradle.properties
-./gradlew -q :resolver:test :app:testReleaseUnitTest :app:assembleRelease
-apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk   # compare with tools/release-signer.sha256
-cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/IdanPlusIL-X.Y.Z.apk
-# write config/update.json (versionCode, versionName, apkUrl, sha256, sizeBytes, notes)
-git commit -am "Release vX.Y.Z (versionCode N)" && git tag -a vX.Y.Z -m "Idan Plus IL X.Y.Z"
+tools/release.sh X.Y.Z --notes "..." --dry-run   # bump, tests, build, signer guard, manifest, commit, tag; nothing pushed
+# keep the commit and tag the dry run left (ignore its undo hint), then:
 git push origin refs/tags/vX.Y.Z
 gh release create vX.Y.Z app/build/outputs/apk/release/IdanPlusIL-X.Y.Z.apk \
   --repo davidturchak/IdanPlusIL --verify-tag --title "Idan Plus IL X.Y.Z" --notes "..."
+until curl -sfIL https://github.com/davidturchak/IdanPlusIL/releases/download/vX.Y.Z/IdanPlusIL-X.Y.Z.apk >/dev/null; do sleep 5; done
 git push origin main
 ```
 
-If `main` goes out before the release exists, TVs that check in that window
-see the new version and fail the download; they recover on the next check.
-Close the window quickly rather than rolling back.
+Upload the exact file the dry run produced; `config/update.json` already holds
+its sha256 and size, and the app rejects a download that does not match them.
+If `main` cannot be pushed first, do the script's steps 2-5 by hand in the
+order its header lists them, staging only `gradle.properties` and
+`config/update.json` for the release commit; never write `config/update.json`
+by hand without deriving sha256, size and URL from the renamed asset.
+
+If `main` goes out before the asset is live, TVs that check in that window see
+the new version and fail the download; they recover on the next check, so
+close the window quickly rather than rolling back. The exception is when the
+release cannot be created and the APK must be rebuilt after `main` is out: a
+rebuilt APK does not match the live manifest, so push a corrected
+`config/update.json` (or roll back as above) right away.
 
 ### Testing the update flow
 
