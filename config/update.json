@@ -1,8 +1,8 @@
 {
-  "versionCode": 11,
-  "versionName": "1.4.5",
-  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.4.5/IdanPlusIL-1.4.5.apk",
-  "sha256": "1341faa6d69a49e3a398e1b56e3e162f10be6a955d69d4d89080795593df9257",
-  "sizeBytes": 2607713,
-  "notes": "Anonymous install-base heartbeat"
+  "versionCode": 12,
+  "versionName": "1.5.0",
+  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.5.0/IdanPlusIL-1.5.0.apk",
+  "sha256": "a376a825149a1d364dba040c91c616e0f3da48b86a67536315a5236a4b1000bc",
+  "sizeBytes": 2647343,
+  "notes": "Works on phones and tablets"
 }
