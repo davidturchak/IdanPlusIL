@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Self-update: hand a downloaded APK to the system installer (API 26+ gate). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- TV-only. Leanback required; touchscreen explicitly NOT required. -->
-    <uses-feature android:name="android.software.leanback" android:required="true" />
+    <!-- TVs, tablets and phones from one APK: neither leanback nor a touchscreen
+         is required. The LEANBACK_LAUNCHER intent below keeps the TV home row. -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -28,20 +30,18 @@
 
         <activity
             android:name=".ui.channels.ChannelsActivity"
-            android:configChanges="keyboard|keyboardHidden|navigation|uiMode|layoutDirection"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|layoutDirection"
             android:exported="true"
             android:launchMode="singleTop"
-            android:screenOrientation="landscape"
             android:theme="@style/Theme.IdanPlusIL">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-                <!-- LAUNCHER too, not for phones (leanback is a required
-                     feature, so the APK cannot install on one) but for the
-                     package installer's "App installed" screen: its Open
-                     button is enabled from getLaunchIntentForPackage, which
-                     only knows this category. Without it Open is greyed out
-                     and unreachable after every self-update. -->
+                <!-- LAUNCHER is the phone and tablet home-screen entry, and
+                     on every device it is what the package installer's "App
+                     installed" screen needs: its Open button is enabled from
+                     getLaunchIntentForPackage, which only knows this category.
+                     Without it Open is greyed out after every self-update. -->
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -51,8 +51,12 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|layoutDirection"
             android:exported="false"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape"
-            android:theme="@style/Theme.IdanPlusIL.Player" />
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.IdanPlusIL.Player"
+            tools:ignore="DiscouragedApi">
+            <!-- Live 16:9 video fills a landscape phone; either landscape is fine
+                 (sensor), portrait is not. A TV is landscape regardless. -->
+        </activity>
 
         <!-- Serves downloaded update APKs to the system installer. The authority
              carries ${applicationId}, so the .debug variant gets its own. -->

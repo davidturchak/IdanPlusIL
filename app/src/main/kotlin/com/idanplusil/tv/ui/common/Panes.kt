@@ -3,9 +3,12 @@ package com.idanplusil.tv.ui.common
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,14 +53,51 @@ fun LoadingPane(message: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** The one button look used everywhere: quiet at rest, unmistakably orange when focused. */
+/**
+ * The one button look used everywhere: quiet at rest, unmistakably orange when
+ * focused. Under touch there is no focus to carry the emphasis, so the primary
+ * button wears the orange at rest instead.
+ */
 @Composable
-fun brandButtonColors(primary: Boolean = true): ButtonColors = ButtonDefaults.colors(
-    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-    contentColor = if (primary) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-    focusedContainerColor = BrandColors.FocusRing,
-    focusedContentColor = MaterialTheme.colorScheme.onPrimary,
-)
+private fun brandButtonColors(primary: Boolean): ButtonColors {
+    val emphasised = primary && !isFocusDriven()
+    return ButtonDefaults.colors(
+        containerColor = if (emphasised) BrandColors.FocusRing else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = when {
+            emphasised -> MaterialTheme.colorScheme.onPrimary
+            primary -> MaterialTheme.colorScheme.onSurface
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        focusedContainerColor = BrandColors.FocusRing,
+        focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+        pressedContainerColor = BrandColors.FocusRing,
+        pressedContentColor = MaterialTheme.colorScheme.onPrimary,
+    )
+}
+
+/**
+ * The one button used everywhere. Owns the interaction source so the tap path
+ * and the pressed colours cannot be wired separately and drift apart. No extra
+ * focusable() on the modifier: it would add a second focus target outside the
+ * Button, which then never shows focus or receives the click.
+ */
+@Composable
+fun BrandButton(
+    onClick: () -> Unit,
+    primary: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Button(
+        onClick = onClick,
+        colors = brandButtonColors(primary),
+        interactionSource = interaction,
+        // tv-material Button ignores pointer input; this is the phone/tablet click path.
+        modifier = modifier.touchClickable(onClick, interaction),
+        content = content,
+    )
+}
 
 /**
  * Error, empty and prompt states.
@@ -79,12 +119,14 @@ fun MessagePane(
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val focusDriven = isFocusDriven()
     LaunchedEffect(actionLabel) {
-        if (actionLabel != null) runCatching { focusRequester.requestFocus() }
+        if (actionLabel != null && focusDriven) runCatching { focusRequester.requestFocus() }
     }
-
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -104,22 +146,17 @@ fun MessagePane(
         }
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(28.dp))
-            Button(
+            // The primary action is the one the remote's centre key should
+            // land on, so it has to look unmistakably focused.
+            BrandButton(
                 onClick = onAction,
-                // The primary action is the one the remote's centre key should
-                // land on, so it has to look unmistakably focused. No extra
-                // focusable() here: it would add a second focus target outside
-                // the Button, which then never shows focus or receives the click.
-                colors = brandButtonColors(primary = true),
+                primary = true,
                 modifier = Modifier.focusRequester(focusRequester),
             ) { Text(actionLabel) }
         }
         if (secondaryLabel != null && onSecondary != null) {
             Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onSecondary,
-                colors = brandButtonColors(primary = false),
-            ) { Text(secondaryLabel) }
+            BrandButton(onClick = onSecondary, primary = false) { Text(secondaryLabel) }
         }
     }
 }

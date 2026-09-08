@@ -5,6 +5,7 @@
     <!-- Channel grid -->
     <string name="loading_channels">Loading channels…</string>
     <string name="offline_showing_cached">Offline — showing cached list</string>
+    <string name="offline_short">Offline</string>
     <string name="channels_empty_title">No channels available</string>
     <string name="channels_empty_detail">Every channel is currently hidden in the channel list configuration.</string>
     <string name="channels_error_title">Can\'t reach the channel list</string>
@@ -25,6 +26,9 @@
     <string name="playback_error_unknown">Playback stopped unexpectedly.</string>
     <string name="cd_play">Play</string>
     <string name="cd_pause">Pause</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_previous_channel">Previous channel</string>
+    <string name="cd_next_channel">Next channel</string>
     <string name="cd_channel_logo">Channel logo</string>
     <string name="cd_app_logo">Idan Plus IL</string>
     <string name="version_label">v%1$s</string>

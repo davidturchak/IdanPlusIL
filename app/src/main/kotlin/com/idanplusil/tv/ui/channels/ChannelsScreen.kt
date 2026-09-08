@@ -8,11 +8,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -44,8 +48,12 @@ import com.idanplusil.tv.R
 import com.idanplusil.tv.data.config.ConfigError
 import com.idanplusil.tv.ui.common.LoadingPane
 import com.idanplusil.tv.ui.common.MessagePane
-import com.idanplusil.tv.ui.common.TvSafeAreaHorizontal
-import com.idanplusil.tv.ui.common.TvSafeAreaVertical
+import com.idanplusil.tv.ui.common.isCompactWidth
+import com.idanplusil.tv.ui.common.isFocusDriven
+import com.idanplusil.tv.ui.common.isTelevision
+import com.idanplusil.tv.ui.common.screenMarginHorizontal
+import com.idanplusil.tv.ui.common.screenMarginVertical
+import com.idanplusil.tv.ui.common.touchClickable
 import com.idanplusil.tv.ui.theme.BrandColors
 import com.idanplusil.tv.ui.common.BrandLockup
 
@@ -77,22 +85,21 @@ fun ChannelsScreen(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-    ) {
-        // One static brush, allocated once. No animated gradients, no blur -
-        // it stops the screen reading as an empty black rectangle and costs
-        // nothing per frame.
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(BrandColors.Orange.copy(alpha = 0.06f), MaterialTheme.colorScheme.background),
-                        center = Offset(0f, 0f),
-                        radius = 1400f,
-                    )
+            // One static brush, allocated once. No animated gradients, no blur -
+            // it stops the screen reading as an empty black rectangle and costs
+            // nothing per frame.
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(BrandColors.Orange.copy(alpha = 0.06f), MaterialTheme.colorScheme.background),
+                    center = Offset(0f, 0f),
+                    radius = 1400f,
                 )
-        )
-
+            )
+            // Phones and tablets draw edge to edge; the backgrounds above reach
+            // the bars, the content stays clear of the status bar, gesture bar
+            // and any cutout. On a TV these insets are zero.
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+    ) {
         // The pane replaces the grid outright: an update may be the fix for a
         // broken grid, and a scrim over focusable cards is a D-pad trap.
         if (paneVisible) {
@@ -136,6 +143,11 @@ private fun ChannelGrid(
     onCheckUpdates: (() -> Unit)?,
 ) {
     val firstItemFocus = remember { FocusRequester() }
+    val tv = isTelevision()
+    val focusDriven = isFocusDriven()
+    val marginH = screenMarginHorizontal()
+    val marginV = screenMarginVertical()
+    val gap = if (tv) 20.dp else 12.dp
 
     Column(Modifier.fillMaxSize()) {
         Header(
@@ -145,24 +157,29 @@ private fun ChannelGrid(
         )
 
         LazyVerticalGrid(
-            // 960dp layout space minus the 48dp safe area each side leaves
-            // 864dp; five columns with 20dp gaps gives ~157dp cards.
-            columns = GridCells.Fixed(COLUMNS),
+            // Card width is pinned to 140-160dp and the column count follows
+            // the window. On a 960dp TV layout minus the 48dp safe area each
+            // side that is the same five ~157dp columns as before (a box that
+            // reports a wider dp layout gets more, not wider, cards); a portrait
+            // phone gets two, a landscape phone four, a 10" tablet seven.
+            columns = GridCells.Adaptive(minSize = CARD_MIN_WIDTH),
             state = gridState,
             contentPadding = PaddingValues(
-                start = TvSafeAreaHorizontal,
-                end = TvSafeAreaHorizontal,
+                start = marginH,
+                end = marginH,
                 top = 8.dp,
-                bottom = TvSafeAreaVertical,
+                bottom = marginV,
             ),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+            verticalArrangement = Arrangement.spacedBy(gap + 4.dp),
             modifier = Modifier
                 .fillMaxSize()
                 // Send focus to the first card when focus enters the grid, and
                 // restore the previously focused card on the way back from the
                 // player.
-                .focusProperties { onEnter = { firstItemFocus.requestFocus() } },
+                // runCatching: on a two-column phone with a keyboard attached
+                // the first card may be scrolled out of composition.
+                .focusProperties { onEnter = { runCatching { firstItemFocus.requestFocus() } } },
         ) {
             items(state.channels, key = { it.id }) { channel ->
                 ChannelCard(
@@ -178,8 +195,12 @@ private fun ChannelGrid(
         }
     }
 
+    // Only a D-pad viewer needs a starting point. In touch mode a programmatic
+    // focus would leave the first card permanently ringed and scaled; when the
+    // viewer later leaves touch mode the platform assigns focus itself, so the
+    // mode is read once here rather than keyed on.
     LaunchedEffect(state.channels.isNotEmpty()) {
-        if (state.channels.isNotEmpty()) runCatching { firstItemFocus.requestFocus() }
+        if (focusDriven && state.channels.isNotEmpty()) runCatching { firstItemFocus.requestFocus() }
     }
 }
 
@@ -189,15 +210,17 @@ private fun Header(
     updateLabel: String?,
     onCheckUpdates: (() -> Unit)?,
 ) {
+    val compact = isCompactWidth()
+    val marginH = screenMarginHorizontal()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
-            .padding(start = TvSafeAreaHorizontal, end = TvSafeAreaHorizontal, top = TvSafeAreaVertical),
+            .height(if (compact) 56.dp else 72.dp)
+            .padding(start = marginH, end = marginH, top = screenMarginVertical()),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        BrandLockup(height = 40.dp)
+        BrandLockup(height = if (compact) 30.dp else 40.dp)
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (stale) {
@@ -210,12 +233,12 @@ private fun Header(
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        stringResource(R.string.offline_showing_cached),
+                        stringResource(if (compact) R.string.offline_short else R.string.offline_showing_cached),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(if (compact) 8.dp else 16.dp))
             }
             // The installed version doubles as the "check for updates" control:
             // no button chrome at rest, a faint ring and brighter text when the
@@ -236,8 +259,11 @@ private fun VersionBadge(label: String, onClick: (() -> Unit)?) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = dim)
         return
     }
+    val interaction = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
+        interactionSource = interaction,
+        modifier = Modifier.touchClickable(onClick, interaction),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -260,7 +286,7 @@ private fun VersionBadge(label: String, onClick: (() -> Unit)?) {
     }
 }
 
-private const val COLUMNS = 5
+private val CARD_MIN_WIDTH = 140.dp
 
 /** Text that replaces the version while a check is running or an update is pending; null = show the version. */
 @Composable

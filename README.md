@@ -1,6 +1,6 @@
 # Idan Plus IL
 
-An Android TV live channel streaming app. "Idan Plus IL" is the display name
+An Android live channel streaming app for TVs, tablets and phones. "Idan Plus IL" is the display name
 (launcher label, update prompts, release titles). Every identifier keeps the
 unspaced `IdanPlusIL` / `idanplusil` form and must not be renamed: installed
 TVs match updates on the package name (`com.idanplusil.tv`) and the signing
@@ -8,12 +8,13 @@ key, and the tooling reads the rest (the `idanplusil.*` gradle properties, the
 keystore alias, the `IdanPlusIL-X.Y.Z.apk` asset name in `config/update.json`).
 
 > **Status: v1, working.** A channel grid and a Media3 player, running on Android
-> TV. 15 live channels, all verified playing. Streams resolve on the device; there
-> is no server.
+> TV and, since v1.5.0, on phones and tablets from the same APK. 15 live channels,
+> all verified playing. Streams resolve on the device; there is no server.
 
 ## What this is
 
-A ground-up Android TV app (Compose for TV + Media3) for live channel playback. The design
+A ground-up Android app (Compose for TV + Media3) for live channel playback on
+TVs, tablets and phones. The design
 starts from one premise: **a live channel is not a URL, it is a resolution
 procedure that runs at play time.** Stream URLs rot — CDNs rotate, tokens expire
 in minutes, providers restructure their pages — so the app models a channel as
@@ -91,7 +92,7 @@ the base APK.
 ## Repository layout
 
 ```
-app/                                Android TV client - Compose for TV + Media3
+app/                                Android client (TV, tablet, phone) - Compose for TV + Media3
 resolver/                           pure JVM: resolution techniques, config,
                                     the fallback ladder. No android.* imports,
                                     so it is unit-testable without an emulator.

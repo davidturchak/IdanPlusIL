@@ -38,6 +38,7 @@ import androidx.tv.material3.Text
 import coil3.compose.SubcomposeAsyncImage
 import com.idanplusil.resolver.model.Channel
 import com.idanplusil.tv.R
+import com.idanplusil.tv.ui.common.touchClickable
 import com.idanplusil.tv.ui.theme.BrandColors
 
 /**
@@ -86,7 +87,8 @@ fun ChannelCard(
                 shape = shape,
             ),
         ),
-        modifier = modifier,
+        // tv-material Surface ignores pointer input; this is the phone/tablet click path.
+        modifier = modifier.touchClickable(onClick, interaction),
     ) {
         Column(Modifier.fillMaxWidth()) {
             // Full-bleed card art. The bundled logos are opaque 16:9 plates

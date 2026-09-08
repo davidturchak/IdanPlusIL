@@ -1,8 +1,11 @@
 package com.idanplusil.tv.ui.channels
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -18,6 +21,13 @@ class ChannelsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Phones and tablets: draw behind the system bars on every API level, not
+        // only where Android 15 forces it. The theme is always dark, so the bar
+        // icons are pinned light rather than following the device's day/night.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         val container = (application as IdanPlusApplication).container
         val installer = container.updateInstaller
         // The ViewModel keeps this lambda across configuration changes; it must not hold the Activity.

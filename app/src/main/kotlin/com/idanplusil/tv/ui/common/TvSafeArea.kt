@@ -1,24 +1,27 @@
 package com.idanplusil.tv.ui.common
 
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * TV overscan safe area, 5% of a 960x540dp layout space.
+ * Screen margins.
+ *
+ * On a TV this is the overscan safe area, 5% of a 960x540dp layout space. On a
+ * phone or tablet the system-bar insets are handled separately with
+ * [androidx.compose.foundation.layout.WindowInsets] and the margin is an
+ * ordinary content gutter.
  *
  * Uses start/end rather than left/right throughout, so adding a Hebrew locale
  * later is a translation task with no layout consequences.
  */
-val TvSafeAreaHorizontal = 48.dp
-val TvSafeAreaVertical = 27.dp
+private val TvSafeAreaHorizontal = 48.dp
+private val TvSafeAreaVertical = 27.dp
+private val TouchMarginHorizontal = 16.dp
+private val TouchMarginVertical = 12.dp
 
-val TvSafeAreaPadding = PaddingValues(
-    start = TvSafeAreaHorizontal,
-    end = TvSafeAreaHorizontal,
-    top = TvSafeAreaVertical,
-    bottom = TvSafeAreaVertical,
-)
+@Composable
+fun screenMarginHorizontal(): Dp = if (isTelevision()) TvSafeAreaHorizontal else TouchMarginHorizontal
 
-fun Modifier.tvSafeArea(): Modifier = padding(TvSafeAreaPadding)
+@Composable
+fun screenMarginVertical(): Dp = if (isTelevision()) TvSafeAreaVertical else TouchMarginVertical

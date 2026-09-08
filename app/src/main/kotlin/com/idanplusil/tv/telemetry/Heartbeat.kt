@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.core.content.edit
 import com.idanplusil.tv.BuildConfig
 import com.idanplusil.tv.IdanPlusApplication
 import java.util.UUID
@@ -102,7 +103,7 @@ class DeviceIdStore(context: Context) {
     @Synchronized
     fun get(): String =
         prefs.getString(KEY, null) ?: UUID.randomUUID().toString().also {
-            prefs.edit().putString(KEY, it).apply()
+            prefs.edit { putString(KEY, it) }
         }
 
     private companion object {

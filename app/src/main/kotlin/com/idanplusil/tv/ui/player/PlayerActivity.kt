@@ -2,18 +2,20 @@ package com.idanplusil.tv.ui.player
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -22,6 +24,7 @@ import androidx.media3.common.util.UnstableApi
 import com.idanplusil.tv.IdanPlusApplication
 import com.idanplusil.tv.player.PlaybackState
 import com.idanplusil.tv.player.PlayerFactory
+import com.idanplusil.tv.ui.common.isTelevision
 import com.idanplusil.tv.ui.theme.IdanPlusTheme
 import kotlinx.coroutines.delay
 
@@ -33,15 +36,24 @@ class PlayerActivity : ComponentActivity() {
     private var showOverlay: (() -> Unit)? = null
     private var overlayIsVisible: () -> Boolean = { false }
     private var hideOverlay: (() -> Unit)? = null
+    private var isTelevision = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        isTelevision = resources.configuration.isTelevision()
         val container = (application as IdanPlusApplication).container
         val channelId = intent.getStringExtra(EXTRA_CHANNEL_ID)
             ?: run { finish(); return }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Besides drawing behind the (hidden) bars this lets the window into a
+        // phone's display cutout; with the default cutout mode a landscape
+        // window is letterboxed away from the notch and the overlay's
+        // safeDrawing padding would never have anything to pad.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         WindowInsetsControllerCompat(window, window.decorView).apply {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -65,8 +77,10 @@ class PlayerActivity : ComponentActivity() {
 
                 var overlayVisible by remember { mutableStateOf(true) }
                 var overlayTick by remember { mutableStateOf(0) }
-                showOverlay = { overlayVisible = true; overlayTick++ }
-                hideOverlay = { overlayVisible = false }
+                val show: () -> Unit = { overlayVisible = true; overlayTick++ }
+                val hide: () -> Unit = { overlayVisible = false }
+                showOverlay = show
+                hideOverlay = hide
                 overlayIsVisible = { overlayVisible }
 
                 LaunchedEffect(overlayTick, overlayVisible) {
@@ -85,6 +99,12 @@ class PlayerActivity : ComponentActivity() {
                     overlayVisible = overlayVisible,
                     onRetry = vm::retry,
                     onBack = { finish() },
+                    // Touch: a tap on the picture toggles the overlay; the overlay's
+                    // own controls mirror the remote keys below, including
+                    // standing down while the failure pane owns the screen.
+                    onTap = { if (state !is PlaybackState.Failed) { if (overlayVisible) hide() else show() } },
+                    onTogglePlayPause = { if (state !is PlaybackState.Failed) { vm.togglePlayPause(); show() } },
+                    onZap = { delta -> if (state !is PlaybackState.Failed) { vm.zap(delta); show() } },
                 )
             }
         }
@@ -119,8 +139,11 @@ class PlayerActivity : ComponentActivity() {
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
                 showOverlay?.invoke(); true
             }
+            // Back dismisses the overlay first only on a TV, where that is the
+            // convention. On a phone the same key must leave the player: a tap
+            // already hides the overlay, and a two-press Back reads as broken.
             KeyEvent.KEYCODE_BACK -> {
-                if (overlayIsVisible()) { hideOverlay?.invoke(); true } else super.onKeyDown(keyCode, event)
+                if (isTelevision && overlayIsVisible()) { hideOverlay?.invoke(); true } else super.onKeyDown(keyCode, event)
             }
             else -> super.onKeyDown(keyCode, event)
         }

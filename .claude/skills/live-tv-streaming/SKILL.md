@@ -331,8 +331,10 @@ IdanPlusIL actually built, so a fresh session can start here.
 | Media3 assembly: SurfaceView, decoder fallback, chunkless HLS, 30 s buffer | `app/.../player/PlayerFactory.kt` |
 | 403/410 → exclude + re-resolve | `app/.../player/LoadErrorPolicy.kt` |
 | Player state machine: recovery *episodes* (option stepping, one re-resolve, one 15 s deadline per episode; a failure after a picture was up opens a new episode), zapping cancels the in-flight resolve | `app/.../ui/player/PlayerViewModel.kt` |
-| Player keys (stand down when the failure pane is up) | `app/.../ui/player/PlayerActivity.kt` |
-| Grid, card (full-bleed art, number-badge monogram fallback, 4-signal focus), header: logo, offline chip, version label | `app/.../ui/channels/` |
+| Player keys (stand down when the failure pane is up); Back hides the overlay on TV only | `app/.../ui/player/PlayerActivity.kt` |
+| Player touch: tap layer over the SurfaceView toggles the overlay; on non-TV the overlay carries back / prev / play-pause / next as non-focusable hand-drawn `TouchControl`s | `app/.../ui/player/PlayerScreen.kt` |
+| Form factors: `isTelevision()` (uiMode) picks margins and card gaps, `isFocusDriven()` (input mode) gates every programmatic focus request, `isCompactWidth()` shortens the header; `Modifier.touchClickable` gives tv-material Surface/Button the tap path they lack | `app/.../ui/common/{DeviceClass,TvSafeArea,TouchClickable}.kt` |
+| Grid (`GridCells.Adaptive(140.dp)`: 5 columns on the TV, 2 on a portrait phone, ~7 on a tablet; `safeDrawing` insets on the root), card (full-bleed art, number-badge monogram fallback, 4-signal focus, tap), header: logo, offline chip, version label | `app/.../ui/channels/` |
 | Card art lookup: `logo` config value → URL or bundled drawable id | `app/.../ui/channels/ChannelLogo.kt`, `app/src/main/res/drawable-nodpi/logo_*.webp`, `res/raw/keep.xml` |
 | Version label = "check for updates" control (`VersionBadge`: chrome-free tv-material `Surface`, thin ring on focus; label swaps to Checking… / You're up to date / Update to X) | `app/.../ui/channels/ChannelsScreen.kt` |
 | Self-update: manifest model, version check, streaming download + SHA-256, APK cache | `app/.../data/update/{UpdateManifest,UpdateChecker,ApkDownloader,ApkStore}.kt` (pure JVM, tested) |
@@ -459,6 +461,19 @@ confirms which build a TV runs.
 
 ### Gotchas that cost time - do not rediscover
 
+- **tv-material `Surface`/`Button` do not respond to touch at all.** Their click
+  modifier is `handleDPadEnter` + `focusable`; there is no pointer handling in
+  the 1.1.0 bytecode. Buttons go through `BrandButton` (`ui/common/Panes.kt`),
+  which owns the interaction source and the tap path; a bespoke tv-material
+  `Surface` (card, version badge) takes `Modifier.touchClickable(onClick,
+  interactionSource)` from `ui/common` with the same interaction source it
+  draws from, so a finger gets the pressed colours (after the tap timeout, so a
+  scroll that starts on a card does not flash it). Player
+  controls for touch are plain non-focusable Boxes so the D-pad path on TV is
+  untouched. Programmatic focus requests (first card, primary pane button) are
+  gated on `isFocusDriven()`; in touch mode they would paint a permanent ring.
+  The manifest no longer requires leanback; the player is `sensorLandscape`,
+  the grid follows the device orientation.
 - **Never add `focusable()` to a tv-material `Button`/`Surface` modifier.** It
   creates a second focus target outside the component: `requestFocus()` lands on
   the wrapper, the button never draws focused and the centre key does nothing.
