@@ -61,6 +61,12 @@ Three patterns carry most of the weight:
 - **Resolvers accumulate options rather than pick one**, so the selection layer
   and the player error policy both have somewhere to fall back to.
 
+**Telemetry.** The app sends an anonymous install-base heartbeat: a random
+per-install UUID (never a hardware identifier), the package name and the version,
+POSTed to `telemetry.ku4er.net` once per cold start and every six hours. It is
+fire-and-forget, shows nothing, and any failure is silently dropped
+(`app/.../telemetry/Heartbeat.kt`).
+
 ### Settled decisions
 
 **Stream resolution runs on the device, and there is no backend.** The app ports

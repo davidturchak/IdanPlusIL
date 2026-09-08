@@ -21,6 +21,8 @@ import com.idanplusil.tv.data.update.ApkDownloader
 import com.idanplusil.tv.data.update.ApkStore
 import com.idanplusil.tv.data.update.UpdateChecker
 import com.idanplusil.tv.data.update.UpdateManifest
+import com.idanplusil.tv.telemetry.DeviceIdStore
+import com.idanplusil.tv.telemetry.Heartbeat
 import com.idanplusil.tv.update.UpdateInstaller
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -102,6 +104,13 @@ class AppContainer(private val appContext: Context) {
 
     /** Process-lifetime memory of "Later", so coming back from the player does not re-prompt. */
     val updateSession = UpdateSession()
+
+    // ---- Telemetry ---------------------------------------------------------
+
+    /** Anonymous install-base heartbeat; fired from the Application and the periodic worker. */
+    val heartbeat: Heartbeat by lazy {
+        Heartbeat(BuildConfig.HEARTBEAT_URL, baseHttpClient, DeviceIdStore(appContext)::get)
+    }
 
     init {
         ResolverLog.sink = ResolverLog.Sink { channelId, type, stage, message ->

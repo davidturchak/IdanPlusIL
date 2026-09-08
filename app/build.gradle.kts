@@ -45,6 +45,8 @@ android {
             "\"https://raw.githubusercontent.com/davidturchak/IdanPlusIL/main/config/channels.json\"",
         )
         buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$updateManifestUrl\"")
+        // Anonymous install-base heartbeat (per-install UUID, package, version).
+        buildConfigField("String", "HEARTBEAT_URL", "\"https://telemetry.ku4er.net/heartbeat\"")
         // Deliberately NO localeFilters/resourceConfigurations: adding res/values-iw
         // later must not be silently stripped.
     }
@@ -136,6 +138,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.work.runtime)
 
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)

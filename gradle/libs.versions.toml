@@ -15,6 +15,7 @@ lifecycle          = "2.9.4"
 datastore          = "1.1.1"
 splashscreen       = "1.0.1"
 profileinstaller   = "1.4.1"
+work               = "2.10.1"       # periodic install-base heartbeat
 junit              = "4.13.2"
 
 [libraries]
@@ -26,6 +27,7 @@ androidx-lifecycle-compose   = { module = "androidx.lifecycle:lifecycle-runtime-
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-datastore           = { module = "androidx.datastore:datastore-preferences",       version.ref = "datastore" }
 androidx-profileinstaller    = { module = "androidx.profileinstaller:profileinstaller",     version.ref = "profileinstaller" }
+androidx-work-runtime        = { module = "androidx.work:work-runtime-ktx",                    version.ref = "work" }
 
 compose-bom                  = { module = "androidx.compose:compose-bom",                   version.ref = "composeBom" }
 compose-foundation           = { module = "androidx.compose.foundation:foundation" }
