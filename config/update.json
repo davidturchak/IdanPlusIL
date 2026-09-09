@@ -1,8 +1,8 @@
 {
-  "versionCode": 12,
-  "versionName": "1.5.0",
-  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.5.0/IdanPlusIL-1.5.0.apk",
-  "sha256": "a376a825149a1d364dba040c91c616e0f3da48b86a67536315a5236a4b1000bc",
-  "sizeBytes": 2647343,
-  "notes": "Works on phones and tablets"
+  "versionCode": 13,
+  "versionName": "1.5.1",
+  "apkUrl": "https://github.com/davidturchak/IdanPlusIL/releases/download/v1.5.1/IdanPlusIL-1.5.1.apk",
+  "sha256": "fbb52a5758139faafd57ca916520a81466f571b9f4d1044b79bd36f6f6b263e4",
+  "sizeBytes": 2647351,
+  "notes": "Anonymous install stats now include Android version and device model"
 }
