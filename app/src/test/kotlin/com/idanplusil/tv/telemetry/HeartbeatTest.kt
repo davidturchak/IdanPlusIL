@@ -89,6 +89,15 @@ class HeartbeatTest {
     }
 
     @Test
+    fun `device label is the real manufacturer and model, not a template`() {
+        assertEquals("Xiaomi MIBOX4", DeviceContext.deviceLabel("Xiaomi", "MIBOX4"))
+        assertEquals("MIBOX4", DeviceContext.deviceLabel(null, "MIBOX4"))
+        assertEquals(null, DeviceContext.deviceLabel("", " "))
+        assertEquals(128, DeviceContext.deviceLabel("x".repeat(100), "y".repeat(100))!!.length)
+        assertFalse(DeviceContext.deviceLabel("Xiaomi", "MIBOX4")!!.contains("\${"))
+    }
+
+    @Test
     fun `any other status is a quiet failure`() = runTest {
         server.enqueue(MockResponse().setResponseCode(200))
         assertFalse(heartbeat().send())

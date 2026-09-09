@@ -128,12 +128,15 @@ data class DeviceContext(
          */
         fun fromSystem(context: Context): DeviceContext = DeviceContext(
             sdkInt = Build.VERSION.SDK_INT,
-            device = runCatching { "${'$'}{Build.MANUFACTURER} ${'$'}{Build.MODEL}".trim() }
-                .getOrNull()?.clip(128),
+            device = runCatching { deviceLabel(Build.MANUFACTURER, Build.MODEL) }.getOrNull(),
             installer = installerPackage(context)?.clip(128),
             locale = runCatching { Locale.getDefault().toLanguageTag() }.getOrNull()?.clip(32),
             abi = runCatching { Build.SUPPORTED_ABIS.firstOrNull() }.getOrNull()?.clip(32),
         )
+
+        /** "Xiaomi MIBOX4"; null when both parts are blank. Clipped to the server's 128-char column. */
+        internal fun deviceLabel(manufacturer: String?, model: String?): String? =
+            listOfNotNull(manufacturer, model).joinToString(" ").trim().clip(128)
 
         @Suppress("DEPRECATION")
         private fun installerPackage(context: Context): String? = runCatching {
