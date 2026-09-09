@@ -21,6 +21,7 @@ import com.idanplusil.tv.data.update.ApkDownloader
 import com.idanplusil.tv.data.update.ApkStore
 import com.idanplusil.tv.data.update.UpdateChecker
 import com.idanplusil.tv.data.update.UpdateManifest
+import com.idanplusil.tv.telemetry.DeviceContext
 import com.idanplusil.tv.telemetry.DeviceIdStore
 import com.idanplusil.tv.telemetry.Heartbeat
 import com.idanplusil.tv.update.UpdateInstaller
@@ -109,7 +110,12 @@ class AppContainer(private val appContext: Context) {
 
     /** Anonymous install-base heartbeat; fired from the Application and the periodic worker. */
     val heartbeat: Heartbeat by lazy {
-        Heartbeat(BuildConfig.HEARTBEAT_URL, baseHttpClient, DeviceIdStore(appContext)::get)
+        Heartbeat(
+            BuildConfig.HEARTBEAT_URL,
+            baseHttpClient,
+            DeviceIdStore(appContext)::get,
+            deviceContext = DeviceContext.fromSystem(appContext),
+        )
     }
 
     init {

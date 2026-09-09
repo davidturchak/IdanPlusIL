@@ -1,6 +1,7 @@
 package com.idanplusil.tv.telemetry
 
 import android.content.Context
+import android.os.Build
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -11,6 +12,7 @@ import androidx.work.WorkerParameters
 import androidx.core.content.edit
 import com.idanplusil.tv.BuildConfig
 import com.idanplusil.tv.IdanPlusApplication
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
@@ -29,10 +31,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
  * Anonymous install-base heartbeat.
  *
  * One POST per cold start plus one every six hours via WorkManager. The payload
- * is a per-install random UUID (never a hardware identifier), the package name
- * and the version. Nothing here may ever reach the user: every failure - no
- * network, DNS, timeout, non-204 - is swallowed and the next scheduled ping
- * simply tries again.
+ * is a per-install random UUID (never a hardware identifier), the package name,
+ * the version and a little nullable device context ([DeviceContext]). Nothing
+ * here may ever reach the user: every failure - no network, DNS, timeout,
+ * non-204 - is swallowed and the next scheduled ping simply tries again.
  */
 class Heartbeat(
     private val endpoint: String,
@@ -41,6 +43,7 @@ class Heartbeat(
     private val appId: String = BuildConfig.APPLICATION_ID,
     private val version: String = BuildConfig.VERSION_NAME,
     private val versionCode: Int = BuildConfig.VERSION_CODE,
+    private val deviceContext: DeviceContext = DeviceContext.NONE,
 ) {
     private val client = client.newBuilder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -55,6 +58,13 @@ class Heartbeat(
             put("app_id", appId)
             put("version", version)
             put("version_code", versionCode)
+            // Optional context; the server accepts null for any of these but
+            // rejects unknown keys, so this list must match the contract exactly.
+            put("sdk_int", deviceContext.sdkInt)
+            put("device", deviceContext.device)
+            put("installer", deviceContext.installer)
+            put("locale", deviceContext.locale)
+            put("abi", deviceContext.abi)
         }.toString()
         val request = Request.Builder()
             .url(endpoint)
@@ -90,6 +100,52 @@ class Heartbeat(
             WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
         }
+    }
+}
+
+/**
+ * Coarse, non-identifying facts about the device, sent alongside the heartbeat
+ * so the dashboard can split the install base by API level, model, installer,
+ * locale and ABI. Every field is nullable; whatever cannot be read is sent as
+ * JSON null. No hardware identifiers, ever.
+ */
+data class DeviceContext(
+    val sdkInt: Int? = null,
+    val device: String? = null,
+    val installer: String? = null,
+    val locale: String? = null,
+    val abi: String? = null,
+) {
+    companion object {
+        /** All-null context, used in tests and as the constructor default. */
+        val NONE = DeviceContext()
+
+        /**
+         * Reads the context from the running system. Each field is read on its
+         * own so one odd OEM failure cannot blank the rest. Strings are clipped
+         * to the server's column limits; a too-long value would otherwise fail
+         * the whole heartbeat with a 422.
+         */
+        fun fromSystem(context: Context): DeviceContext = DeviceContext(
+            sdkInt = Build.VERSION.SDK_INT,
+            device = runCatching { "${'$'}{Build.MANUFACTURER} ${'$'}{Build.MODEL}".trim() }
+                .getOrNull()?.clip(128),
+            installer = installerPackage(context)?.clip(128),
+            locale = runCatching { Locale.getDefault().toLanguageTag() }.getOrNull()?.clip(32),
+            abi = runCatching { Build.SUPPORTED_ABIS.firstOrNull() }.getOrNull()?.clip(32),
+        )
+
+        @Suppress("DEPRECATION")
+        private fun installerPackage(context: Context): String? = runCatching {
+            val pm = context.packageManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                pm.getInstallSourceInfo(context.packageName).installingPackageName
+            } else {
+                pm.getInstallerPackageName(context.packageName)
+            }
+        }.getOrNull()
+
+        private fun String.clip(max: Int): String? = take(max).ifEmpty { null }
     }
 }
 

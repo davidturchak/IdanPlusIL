@@ -344,7 +344,7 @@ IdanPlusIL actually built, so a fresh session can start here.
 | Release pipeline (bump, build, signer guard, GitHub Release, then manifest) | `tools/release.sh`, `tools/release-signer.sha256` |
 | Update-flow test build (release-signed, versionCode 1, `--install` replaces the TV app) | `tools/test-build.sh` |
 | Theme (LocalContentColor wired explicitly), tokens | `app/.../ui/theme/` |
-| Install-base heartbeat: per-install UUID in SharedPreferences, POST once per cold start (IO coroutine from the Application) and every 6 h (WorkManager, initial delay 6 h so a cold start pings once), 5 s timeouts, every failure swallowed, no logging | `app/.../telemetry/Heartbeat.kt`, `BuildConfig.HEARTBEAT_URL` |
+| Install-base heartbeat: per-install UUID in SharedPreferences, POST once per cold start (IO coroutine from the Application) and every 6 h (WorkManager, initial delay 6 h so a cold start pings once), 5 s timeouts, every failure swallowed, no logging. Body is exactly the contract keys `device_id, app_id, version, version_code` + nullable context `sdk_int, device, installer, locale, abi` (`DeviceContext.fromSystem`, clipped to the server's column limits) - the server rejects unknown keys, so add fields on both sides together | `app/.../telemetry/Heartbeat.kt`, `BuildConfig.HEARTBEAT_URL` |
 | Logo keying pipeline | `tools/branding/build_assets.py` |
 | Channel card art normalisation (one-off authoring) | `tools/branding/build_channel_logos.py` |
 
